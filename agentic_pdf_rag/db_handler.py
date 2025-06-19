@@ -5,7 +5,7 @@ import logging
 from psycopg2.extras import Json
 from psycopg2.extras import execute_values
 
-from agentic_pdf_rag.openai_client import AzureOpenAIEmbeddings
+from .openai_client import AzureOpenAIEmbeddings
 
 logger = logging.getLogger(__name__)
 

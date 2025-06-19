@@ -1,6 +1,7 @@
 import logging
 
-from agentic_pdf_rag import DBHandler, AzureOpenAIChatClient
+from .db_handler import DBHandler
+from .openai_client import AzureOpenAIChatClient
 
 logger = logging.getLogger(__name__)
 

@@ -6,10 +6,10 @@ from typing import List, Dict, Any
 from langchain_experimental.text_splitter import SemanticChunker
 
 
-from agentic_pdf_rag import AgenticPDFParser
-from agentic_pdf_rag.agentic_chunker import AgenticChunker
-from agentic_pdf_rag.embeddings import OpenAIEmbeddings
-from agentic_pdf_rag.openai_client import AzureOpenAIEmbeddings
+from .agentic_pdf_parser import AgenticPDFParser
+from .agentic_chunker import AgenticChunker
+from .embeddings import OpenAIEmbeddings
+from .openai_client import AzureOpenAIEmbeddings
 
 logger = logging.getLogger(__name__)
 

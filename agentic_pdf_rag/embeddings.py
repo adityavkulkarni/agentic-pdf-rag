@@ -2,7 +2,7 @@ import logging
 
 from typing import List
 from langchain_core.embeddings import Embeddings
-from agentic_pdf_rag.openai_client import AzureOpenAIEmbeddings
+from .openai_client import AzureOpenAIEmbeddings
 
 logger = logging.getLogger(__name__)
 
