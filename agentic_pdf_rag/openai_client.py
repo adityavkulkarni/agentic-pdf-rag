@@ -7,14 +7,11 @@ load_dotenv()
 
 class AzureOpenAIChatClient:
     def __init__(self, api_endpoint: str, api_key: str, model: str, api_version: str|None = None):
-        self.api_key = api_key
-        self.api_endpoint = api_endpoint
-        self.api_version = api_version
         self.model = model
         self.client = AzureOpenAI(
-            api_key=self.api_key,
-            azure_endpoint=self.api_endpoint,
-            api_version=self.api_version
+            api_key=api_key,
+            azure_endpoint=api_endpoint,
+            api_version=api_version
         )
 
     def chat_completion(
@@ -71,8 +68,24 @@ class AzureOpenAIChatClient:
         )
         return response
 
+    def create_embeddings(self, input_phrases: list[str]):
+        return self.client.embeddings.create(
+            input=input_phrases,
+            model=self.model
+        )
 
-class AzureOpenAIEmbeddings:
+    def create_embedding_dict(self, input_phrases: list[str]):
+        # Get the embeddings response
+        response = self.client.embeddings.create(
+            input=input_phrases,
+            model=self.model
+        )
+        # Extract the embeddings from the response
+        embeddings = [item.embedding for item in response.data]
+        # Map each phrase to its embedding
+        return dict(zip(input_phrases, embeddings))
+
+"""class AzureOpenAIEmbeddings:
     def __init__(self, endpoint: str, api_key: str, model: str, api_version: str|None = None):
         self.client = AzureOpenAI(
             api_version=api_version,
@@ -96,19 +109,4 @@ class AzureOpenAIEmbeddings:
         # Extract the embeddings from the response
         embeddings = [item.embedding for item in response.data]
         # Map each phrase to its embedding
-        return dict(zip(input_phrases, embeddings))
-
-
-if __name__ == "__main__":
-    text = """
-    Summarize below text and identify all the named entities. Follow the response format. 
-    
-    Dr. Emily Carter recently published a groundbreaking research paper in the journal Nature, following a study conducted in collaboration with scientists from Stanford University. Microsoft has announced plans to invest $2 billion in sustainable technology by the year 2030. Paris, the capital of France, is renowned for its historic landmarks such as the Eiffel Tower. Last month, Elon Musk, CEO of Tesla, spoke at the World Economic Forum. These developments highlight the ongoing advancements in both science and technology across the globe.
-    """
-    import pprint
-    client = AzureOpenAIEmbeddings(model="text-embedding-3-large",
-                                   api_key="",
-                                   endpoint="https://ul-openai-finetune-dev.openai.azure.com/",
-                                   api_version="2024-02-01")
-    response = client.create_embedding_dict(text)
-    pprint.pprint(response)
+        return dict(zip(input_phrases, embeddings))"""

@@ -26,7 +26,7 @@ class Config:
             models = config['models']
             self.agentic_pdf_parser_model = models.get('agentic_pdf_parser_model')
             self.agentic_chunker_model = models.get('agentic_chunker_model')
-            self.openai_embedding_model = models.get('embedding_model')
+            self.openai_embedding_model = models.get('openai_embedding_model')
         except KeyError as e:
             logger.error(f"Missing 'models' section or key: {e}")
             raise
@@ -39,16 +39,16 @@ class Config:
             else:
                 logger.error("OpenAI API key not found in arguments or environment variables.")
                 raise Exception("OpenAI API key not found in arguments or environment variables.")
-            self.openai_embeddings_api_key = openai_embeddings_api_key or os.getenv("AZURE_OPENAI_API_KEY", None)
-            if self.openai_embeddings_api_key:
+            self.openai_embedding_api_key = openai_embeddings_api_key or os.getenv("AZURE_OPENAI_API_KEY", None)
+            if self.openai_embedding_api_key:
                 logger.info("OpenAI API key loaded from  environment variable.")
             else:
                 logger.error("OpenAI API key not found in arguments or environment variables.")
                 raise Exception("OpenAI API key not found in arguments or environment variables.")
             self.openai_endpoint = azure_openai.get('openai_endpoint')
-            self.openai_embeddings_endpoint = azure_openai.get('openai_embeddings_endpoint')
+            self.openai_embedding_endpoint = azure_openai.get('openai_embeddings_endpoint')
             self.openai_api_version = azure_openai.get('openai_api_version')
-            self.openai_embeddings_api_version = azure_openai.get('openai_embeddings_api_version')
+            self.openai_embedding_api_version = azure_openai.get('openai_embeddings_api_version')
         except KeyError as e:
             logger.error(f"Missing 'azure_openai' section or key: {e}")
             raise
@@ -78,11 +78,11 @@ class Config:
             "agentic_chunker_model": self.agentic_chunker_model,
             "openai_embedding_model": self.openai_embedding_model,
             "openai_api_key": self.openai_api_key,# "<REDACTED>",
-            "openai_embeddings_api_key": self.openai_embeddings_api_key,#"<REDACTED>",
+            "openai_embeddings_api_key": self.openai_embedding_api_key,#"<REDACTED>",
             "openai_endpoint": self.openai_endpoint,
-            "openai_embeddings_endpoint": self.openai_embeddings_endpoint,
+            "openai_embeddings_endpoint": self.openai_embedding_endpoint,
             "openai_api_version": self.openai_api_version,
-            "openai_embeddings_api_version": self.openai_embeddings_api_version,
+            "openai_embeddings_api_version": self.openai_embedding_api_version,
             "output_directory": self.output_directory,
             "db_name": self.db_name,
             "db_user": self.db_user,
@@ -103,15 +103,15 @@ class Config:
         if "openai_api_key" in config:
             self.openai_api_key = config["openai_api_key"]
         if "openai_embeddings_api_key" in config:
-            self.openai_embeddings_api_key = config["openai_embeddings_api_key"]
+            self.openai_embedding_api_key = config["openai_embeddings_api_key"]
         if "openai_endpoint" in config:
             self.openai_endpoint = config["openai_endpoint"]
         if "openai_embeddings_endpoint" in config:
-            self.openai_embeddings_endpoint = config["openai_embeddings_endpoint"]
+            self.openai_embedding_endpoint = config["openai_embeddings_endpoint"]
         if "openai_api_version" in config:
             self.openai_api_version = config["openai_api_version"]
         if "openai_embeddings_api_version" in config:
-            self.openai_embeddings_api_version = config["openai_embeddings_api_version"]
+            self.openai_embedding_api_version = config["openai_embeddings_api_version"]
         if "output_directory" in config:
             self.output_directory = config["output_directory"]
         if "dbname" in config:

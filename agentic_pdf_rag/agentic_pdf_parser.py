@@ -29,6 +29,8 @@ class ParsedPDF(BaseModel):
     summary: str = ""
     processed_images: Dict[Any, Any] = Field(default_factory=dict)
     ner: List[Any] = Field(default_factory=list)
+    title: str = ""
+    identifier: str = ""
     page_to_group_map: Dict[Any, Any] = Field(default_factory=dict)
 
 class ImageData(BaseModel):
@@ -233,7 +235,7 @@ class AgenticPDFParser:
                 feature_model=custom_feature_model
                 ).choices[0].message.content
             )
-            logger.debug(f"LLM Response: {self.results.custom_extraction_llm_response}")
+            logger.debug(f"LLM Response: {self.custom_extraction_llm_response}")
             return self.custom_extraction_llm_response
         except Exception as e:
             logger.error(f"Exception: {e}")

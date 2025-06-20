@@ -9,7 +9,7 @@ from .config_manager import config
 from .agentic_pdf_parser import AgenticPDFParser
 from .agentic_chunker import AgenticChunker
 from .embeddings import OpenAIEmbeddings
-from .openai_client import AzureOpenAIEmbeddings
+from .openai_client import AzureOpenAIChatClient
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +27,8 @@ class Results(BaseModel):
 class PDFChunker:
     def __init__(self,
                  agentic_pdf_parser: AgenticPDFParser=None,
-                 embedding_model="text-embedding-3-large",
                  custom_embedding_model=None,
+                 openai_embedding_model="text-embedding-3-large",
                  openai_embeddings_endpoint = None,
                  openai_embeddings_api_key = None,
                  openai_embeddings_api_version = None,
@@ -39,25 +39,26 @@ class PDFChunker:
                  semantic_chunker_number_of_chunks=10,
                  agentic_chunker_context = ""
                  ):
-        openai_embeddings_api_version = openai_embeddings_api_version or config.openai_embeddings_api_version
-        openai_embeddings_endpoint = openai_embeddings_endpoint or config.openai_embeddings_endpoint
-        openai_embeddings_api_key = openai_embeddings_api_key or config.openai_embeddings_api_key
+        openai_embeddings_api_version = openai_embeddings_api_version or config.openai_embedding_api_version
+        openai_embeddings_endpoint = openai_embeddings_endpoint or config.openai_embedding_endpoint
+        openai_embeddings_api_key = openai_embeddings_api_key or config.openai_embedding_api_key
+        openai_embedding_model = openai_embedding_model or config.openai_embedding_model
 
         self.results = Results()
         self.agentic_pdf_parser = None
         self.llm_client = None
         self.agentic_chunker = None
         self.sentences = []
-        self.embedding_client = AzureOpenAIEmbeddings(
-            endpoint=openai_embeddings_endpoint,
+        self.embedding_client = AzureOpenAIChatClient(
+            api_endpoint=openai_embeddings_endpoint,
             api_key=openai_embeddings_api_key,
             api_version=openai_embeddings_api_version,
-            model=embedding_model
+            model=openai_embedding_model
         )
         if custom_embedding_model is None:
             self.embeddings = OpenAIEmbeddings(self.embedding_client)
         else:
-            self.embeddings = embedding_model
+            self.embeddings = custom_embedding_model
 
         if agentic_pdf_parser:
             self.add_parsed_pdf(agentic_pdf_parser, agentic_chunker_context)

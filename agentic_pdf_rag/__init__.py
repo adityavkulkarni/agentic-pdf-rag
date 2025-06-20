@@ -3,7 +3,7 @@ import os
 from . import config_manager
 from .agentic_pdf_parser import AgenticPDFParser
 from .db_handler import DBHandler
-from .openai_client import AzureOpenAIChatClient, AzureOpenAIEmbeddings
+from .openai_client import AzureOpenAIChatClient
 from .pdf_chunker import PDFChunker
 from .rag import RetrievalEngine, GenerationEngine
 
@@ -43,11 +43,11 @@ class RAGPipeline:
                         min_chunk_size=None,
                         ):
         return PDFChunker(agentic_pdf_parser=agentic_pdf_parser,
-                          embedding_model=self.config.openai_embedding_model,
+                          openai_embedding_model=self.config.openai_embedding_model,
                           custom_embedding_model=custom_embedding_model,
-                          openai_embeddings_endpoint = self.config.openai_embeddings_endpoint,
-                          openai_embeddings_api_key = self.config.openai_embeddings_api_key,
-                          openai_embeddings_api_version = self.config.openai_embeddings_api_version,
+                          openai_embeddings_endpoint = self.config.openai_embedding_endpoint,
+                          openai_embeddings_api_key = self.config.openai_embedding_api_key,
+                          openai_embeddings_api_version = self.config.openai_embedding_api_version,
                           semantic_chunker_buffer_size = buffer_size,
                           semantic_chunker_breakpoint_threshold_type = breakpoint_threshold_type,
                           semantic_chunker_sentence_split_regex=sentence_split_regex,
@@ -84,9 +84,9 @@ class RAGPipeline:
         )
 
     def get_openai_embeddings_client(self):
-        return AzureOpenAIEmbeddings(
-            endpoint=self.config.openai_embeddings_endpoint,
-            api_key=self.config.openai_embeddings_api_key,
+        return AzureOpenAIChatClient(
+            api_endpoint=self.config.openai_embedding_endpoint,
+            api_key=self.config.openai_embedding_api_key,
             model=self.config.openai_embedding_model,
-            api_version=self.config.openai_embeddings_api_version
+            api_version=self.config.openai_embedding_api_version
         )

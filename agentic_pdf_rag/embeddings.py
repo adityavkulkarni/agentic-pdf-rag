@@ -2,13 +2,13 @@ import logging
 
 from typing import List
 from langchain_core.embeddings import Embeddings
-from .openai_client import AzureOpenAIEmbeddings
+from .openai_client import AzureOpenAIChatClient
 
 logger = logging.getLogger(__name__)
 
 
 class OpenAIEmbeddings(Embeddings):
-    def __init__(self, azure_openai_embeddings: AzureOpenAIEmbeddings):
+    def __init__(self, azure_openai_embeddings: AzureOpenAIChatClient):
         self.azure_openai_embeddings = azure_openai_embeddings
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:

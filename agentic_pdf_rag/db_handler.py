@@ -5,8 +5,8 @@ import logging
 from psycopg2.extras import Json
 from psycopg2.extras import execute_values
 
-from .config_manager import config
-from .openai_client import AzureOpenAIEmbeddings
+from . import config_manager
+from .openai_client import AzureOpenAIChatClient
 
 logger = logging.getLogger(__name__)
 
@@ -189,11 +189,11 @@ class DBHandler(PostgreSQLVectorClient):
         self._create_embedding_table(table_name=self.agentic_embedding_table)
         self._create_embedding_table(table_name=self.semantic_embedding_table)
 
-        self.embedding_client = AzureOpenAIEmbeddings(
-            endpoint=endpoint or config.openai_embeddings_endpoint,
-            api_key=api_key or config.openai_embeddings_api_key,
-            api_version=api_version or config.openai_embeddings_api_version,
-            model=model or config.openai_embedding_model
+        self.embedding_client = AzureOpenAIChatClient(
+            api_endpoint=endpoint or config_manager.config.openai_embedding_endpoint,
+            api_key=api_key or config_manager.config.openai_embedding_api_key,
+            api_version=api_version or config_manager.config.openai_embedding_api_version,
+            model=model or config_manager.config.openai_embedding_model
         )
 
     def insert_document(self, document):
