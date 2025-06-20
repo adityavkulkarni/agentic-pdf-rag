@@ -11,9 +11,10 @@ import pytesseract
 from PIL import Image
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 
 from . import image_parser
+from .config_manager import config
 from .openai_client import AzureOpenAIChatClient
 
 load_dotenv()
@@ -71,10 +72,10 @@ class AgenticPDFParser:
 
         self.output_directory = output_directory
         self.llm_client = AzureOpenAIChatClient(
-            model=model,
-            api_key=openai_api_key or os.getenv("AZURE_OPENAI_API_KEY"),
-            api_endpoint=openai_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT"),
-            api_version=openai_api_version or os.getenv("AZURE_OPENAI_API_VERSION")
+            model=model or config.agentic_pdf_parser_model,
+            api_key=openai_api_key or config.openai_api_key,
+            api_endpoint=openai_endpoint or config.openai_endpoint,
+            api_version=openai_api_version or config.openai_api_version
         )
         os.makedirs(self.output_directory, exist_ok=True)
         image_parser.group_index = 1

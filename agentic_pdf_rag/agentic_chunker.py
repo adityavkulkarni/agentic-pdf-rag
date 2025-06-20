@@ -5,6 +5,7 @@ import logging
 from typing import Optional
 from pydantic import BaseModel
 
+from .config_manager import config
 from .openai_client import AzureOpenAIChatClient
 
 
@@ -12,13 +13,26 @@ logger = logging.getLogger(__name__)
 
 
 class AgenticChunker:
-    def __init__(self, model="gpt-4o-2024-08-06", context="", generate_new_metadata_ind=True, llm_client=None):
+    def __init__(self,
+                 context="",
+                 generate_new_metadata_ind=True,
+                 llm_client=None,
+                 model=None,
+                 openai_endpoint=None,
+                 openai_api_key=None,
+                 openai_api_version=None,
+                 ):
         self.chunks = dict()
         self.id_truncate_limit = 5
         self.generate_new_metadata_ind = generate_new_metadata_ind
         self.print_logging = True
         self.context = context
-        self.llm_client = llm_client  if llm_client else AzureOpenAIChatClient(model=model)
+        self.llm_client = llm_client  if llm_client else AzureOpenAIChatClient(
+            model=model or config.agentic_chunker_model,
+            api_key=openai_api_key or config.openai_api_key,
+            api_endpoint=openai_endpoint or config.openai_endpoint,
+            api_version=openai_api_version or config.openai_api_version
+        )
 
     def reset(self):
         self.chunks = dict()

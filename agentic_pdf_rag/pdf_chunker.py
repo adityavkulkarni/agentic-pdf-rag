@@ -2,10 +2,10 @@ import os
 import logging
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import List, Any
 from langchain_experimental.text_splitter import SemanticChunker
 
-
+from .config_manager import config
 from .agentic_pdf_parser import AgenticPDFParser
 from .agentic_chunker import AgenticChunker
 from .embeddings import OpenAIEmbeddings
@@ -39,9 +39,9 @@ class PDFChunker:
                  semantic_chunker_number_of_chunks=10,
                  agentic_chunker_context = ""
                  ):
-        openai_embeddings_api_version = openai_embeddings_api_version or os.getenv("AZURE_OPENAI_EMBEDDINGS_API_VERSION")
-        openai_embeddings_endpoint = openai_embeddings_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
-        openai_embeddings_api_key = openai_embeddings_api_key or os.getenv("AZURE_OPENAI_API_KEY")
+        openai_embeddings_api_version = openai_embeddings_api_version or config.openai_embeddings_api_version
+        openai_embeddings_endpoint = openai_embeddings_endpoint or config.openai_embeddings_endpoint
+        openai_embeddings_api_key = openai_embeddings_api_key or config.openai_embeddings_api_key
 
         self.results = Results()
         self.agentic_pdf_parser = None

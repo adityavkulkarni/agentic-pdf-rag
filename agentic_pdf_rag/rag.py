@@ -1,5 +1,6 @@
 import logging
 
+from .config_manager import config
 from .db_handler import DBHandler
 from .openai_client import AzureOpenAIChatClient
 
@@ -7,8 +8,14 @@ logger = logging.getLogger(__name__)
 
 
 class RetrievalEngine:
-    def __init__(self, db_handler: DBHandler):
-        self.db_handler = db_handler
+    def __init__(self, db_handler: DBHandler = None):
+        self.db_handler = db_handler if db_handler else DBHandler(
+            dbname=config.db_name,
+            user=config.db_user,
+            password=config.db_password,
+            host=config.db_host,
+            port=config.db_port,
+        )
 
     def get_similar_chunks(self, query_embeddings):
         semantic_response = self.db_handler.similarity_search_chunks(
@@ -21,9 +28,9 @@ class RetrievalEngine:
             "metadata": r[1],
             "filename": r[2],
             "similarity": r[3]
-            } for r in semantic_response if r is not None],
-        key=lambda x: x["similarity"],
-        reverse=True)[:5]
+        } for r in semantic_response if r is not None],
+            key=lambda x: x["similarity"],
+            reverse=True)[:5]
 
     def get_similar_chunk_by_summary(self, query_embeddings, top_k=5):
         semantic_response = self.db_handler.similarity_search_chunks(
@@ -61,8 +68,8 @@ class RetrievalEngine:
     def get_context(self, query):
         query_embeddings = self.db_handler.embedding_client.create_embedding_dict([query])[query]
         context = sorted(
-                self.get_similar_chunks(query_embeddings) +
-                self.get_similar_chunk_by_summary(query_embeddings),
+            self.get_similar_chunks(query_embeddings) +
+            self.get_similar_chunk_by_summary(query_embeddings),
             key=lambda x: x["similarity"],
             reverse=True
         )[:5]

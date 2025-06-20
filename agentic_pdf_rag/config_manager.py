@@ -2,6 +2,9 @@ import os
 import logging
 import configparser
 
+from dotenv import load_dotenv
+
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 
@@ -23,20 +26,20 @@ class Config:
             models = config['models']
             self.agentic_pdf_parser_model = models.get('agentic_pdf_parser_model')
             self.agentic_chunker_model = models.get('agentic_chunker_model')
-            self.embedding_model = models.get('embedding_model')
+            self.openai_embedding_model = models.get('embedding_model')
         except KeyError as e:
             logger.error(f"Missing 'models' section or key: {e}")
             raise
 
         try:
             azure_openai = config['azure_openai']
-            self.openai_api_key = os.getenv("AZURE_OPENAI_API_KEY", None)
+            self.openai_api_key = openai_api_key or os.getenv("AZURE_OPENAI_API_KEY", None)
             if self.openai_api_key:
                 logger.info("OpenAI API key loaded from  environment variable.")
             else:
                 logger.error("OpenAI API key not found in arguments or environment variables.")
                 raise Exception("OpenAI API key not found in arguments or environment variables.")
-            self.openai_embeddings_api_key = os.getenv("AZURE_OPENAI_API_KEY_EAST2", None)
+            self.openai_embeddings_api_key = openai_embeddings_api_key or os.getenv("AZURE_OPENAI_API_KEY", None)
             if self.openai_embeddings_api_key:
                 logger.info("OpenAI API key loaded from  environment variable.")
             else:
@@ -59,11 +62,11 @@ class Config:
 
         try:
             database = config['database']
-            self.dbname = database.get('dbname')
-            self.user = database.get('user')
-            self.password = database.get('password')
-            self.host = database.get('host')
-            self.port = database.get('port')
+            self.db_name = database.get('dbname')
+            self.db_user = database.get('user')
+            self.db_password = database.get('password')
+            self.db_host = database.get('host')
+            self.db_port = database.get('port')
         except KeyError as e:
             logger.error(f"Missing 'database' section or key: {e}")
             raise
@@ -73,17 +76,53 @@ class Config:
         return {
             "agentic_pdf_parser_model": self.agentic_pdf_parser_model,
             "agentic_chunker_model": self.agentic_chunker_model,
-            "embedding_model": self.embedding_model,
-            "openai_api_key": "<REDACTED>",
-            "openai_embeddings_api_key": "<REDACTED>",
+            "openai_embedding_model": self.openai_embedding_model,
+            "openai_api_key": self.openai_api_key,# "<REDACTED>",
+            "openai_embeddings_api_key": self.openai_embeddings_api_key,#"<REDACTED>",
             "openai_endpoint": self.openai_endpoint,
             "openai_embeddings_endpoint": self.openai_embeddings_endpoint,
             "openai_api_version": self.openai_api_version,
             "openai_embeddings_api_version": self.openai_embeddings_api_version,
             "output_directory": self.output_directory,
-            "dbname": self.dbname,
-            "user": self.user,
-            "password": "<REDACTED>",
-            "host": self.host,
-            "port": self.port,
+            "db_name": self.db_name,
+            "db_user": self.db_user,
+            "db_password": self.db_password,#"<REDACTED>",
+            "db_host": self.db_host,
+            "db_port": self.db_port,
         }
+
+    def set_config(self, config):
+        if config.get('openai_api_key'):
+            os.environ['AZURE_OPENAI_API_KEY'] = config.get('openai_api_key')
+        if "agentic_pdf_parser_model" in config:
+            self.agentic_pdf_parser_model = config["agentic_pdf_parser_model"]
+        if "agentic_chunker_model" in config:
+            self.agentic_chunker_model = config["agentic_chunker_model"]
+        if "openai_embedding_model" in config:
+            self.openai_embedding_model = config["openai_embedding_model"]
+        if "openai_api_key" in config:
+            self.openai_api_key = config["openai_api_key"]
+        if "openai_embeddings_api_key" in config:
+            self.openai_embeddings_api_key = config["openai_embeddings_api_key"]
+        if "openai_endpoint" in config:
+            self.openai_endpoint = config["openai_endpoint"]
+        if "openai_embeddings_endpoint" in config:
+            self.openai_embeddings_endpoint = config["openai_embeddings_endpoint"]
+        if "openai_api_version" in config:
+            self.openai_api_version = config["openai_api_version"]
+        if "openai_embeddings_api_version" in config:
+            self.openai_embeddings_api_version = config["openai_embeddings_api_version"]
+        if "output_directory" in config:
+            self.output_directory = config["output_directory"]
+        if "dbname" in config:
+            self.db_name = config["dbname"]
+        if "user" in config:
+            self.db_user = config["user"]
+        if "password" in config:
+            self.db_password = config["password"]
+        if "host" in config:
+            self.db_host = config["host"]
+        if "port" in config:
+            self.db_port = config["port"]
+
+config = Config()

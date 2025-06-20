@@ -5,6 +5,7 @@ import logging
 from psycopg2.extras import Json
 from psycopg2.extras import execute_values
 
+from .config_manager import config
 from .openai_client import AzureOpenAIEmbeddings
 
 logger = logging.getLogger(__name__)
@@ -163,14 +164,17 @@ class PostgreSQLVectorClient:
 
 
 class DBHandler(PostgreSQLVectorClient):
-    def __init__(self, dbname, user, password, host, port):
-        """self.ps = PostgreSQLVectorClient(
-            dbname=dbname,
-            user=user,
-            password=password,
-            host=host,
-            port=port,
-        )"""
+    def __init__(self,
+                 dbname,
+                 user,
+                 password,
+                 host,
+                 port,
+                 endpoint=None,
+                 api_key=None,
+                 model=None,
+                 api_version=None
+                 ):
         super().__init__(
             dbname=dbname,
             user=user,
@@ -186,10 +190,10 @@ class DBHandler(PostgreSQLVectorClient):
         self._create_embedding_table(table_name=self.semantic_embedding_table)
 
         self.embedding_client = AzureOpenAIEmbeddings(
-            endpoint=os.getenv("AZURE_OPENAI_EMBEDDING_ENDPOINT"),
-            api_key=os.getenv("AZURE_OPENAI_API_KEY_EAST2"),
-            api_version="2024-02-01",
-            model="text-embedding-3-large"
+            endpoint=endpoint or config.openai_embeddings_endpoint,
+            api_key=api_key or config.openai_embeddings_api_key,
+            api_version=api_version or config.openai_embeddings_api_version,
+            model=model or config.openai_embedding_model
         )
 
     def insert_document(self, document):

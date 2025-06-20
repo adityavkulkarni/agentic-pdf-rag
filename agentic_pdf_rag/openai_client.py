@@ -6,15 +6,9 @@ load_dotenv()
 
 
 class AzureOpenAIChatClient:
-    def __init__(
-        self,
-        model,
-        api_key=None,
-        api_endpoint=None,
-        api_version=None,
-    ):
-        self.api_key = os.getenv("AZURE_OPENAI_API_KEY") or api_key
-        self.api_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or api_endpoint
+    def __init__(self, api_endpoint: str, api_key: str, model: str, api_version: str|None = None):
+        self.api_key = api_key
+        self.api_endpoint = api_endpoint
         self.api_version = api_version
         self.model = model
         self.client = AzureOpenAI(

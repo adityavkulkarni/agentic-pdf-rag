@@ -4,6 +4,7 @@ import base64
 import logging
 
 from flask import Flask, request, jsonify
+from json_schema_to_pydantic import create_model
 from agentic_pdf_rag import RAGPipeline
 
 logging.basicConfig(
@@ -23,24 +24,6 @@ db_handler = rag_pipeline.get_db_handler()
 retriever = rag_pipeline.get_retrieval_engine()
 generator = rag_pipeline.get_generation_engine()
 app = Flask(__name__)
-
-"""@app.route('/process_json', methods=['POST'])
-def process_json():
-    data = request.get_json()  # Get JSON payload from request
-    if data is None:
-        return jsonify({"error": "No JSON payload received"}), 400
-    # Example: echo back the received data, or process as needed
-    # Decode the Base64 data
-    pdf_data = base64.b64decode(data['pdf'])
-    # Save to a file
-    with open('received_document.pdf', 'wb') as pdf_file:
-        pdf_file.write(pdf_data)
-    response = {
-        "status": "success",
-        "received_data": data,
-        "stored_pdf": "received_document.pdf"
-    }
-    return jsonify(response)"""
 
 @app.route('/get_config', methods=['GET'])
 def get_config():
@@ -69,11 +52,15 @@ def parse_pdf():
     pdf_file = os.path.join(rag_pipeline.config.output_directory, request_data["filename"])
     with open(pdf_file, 'wb') as pdf:
         pdf.write(pdf_data)
+    if request_data.get("custom_feature_model"):
+        feature_model = create_model(request_data.get("custom_feature_model"))
+    else:
+        feature_model = None
     response = pdf_parser.run_pipline(
         pdf_file=pdf_file,
         file_name=request_data["filename"],
         custom_extraction_prompt = request_data.get("custom_extraction_prompt"),
-        custom_feature_model = request_data.get("custom_feature_model"),
+        custom_feature_model = feature_model,
     )
     return jsonify(response)
 
@@ -150,3 +137,4 @@ def get_final_response():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
