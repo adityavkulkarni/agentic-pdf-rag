@@ -6,17 +6,17 @@
 
 > **A next-generation RAG pipeline that transforms any document into intelligent, queryable knowledge using AI-powered parsing, dual chunking strategies, and vector search.**
 
-## 🌟 Why Agentic PDF RAG?
+## 🌟 Why Agentic RAG?
 
 Traditional document processing pipelines struggle with complex layouts, visual elements, and semantic understanding. The library combines **intelligent PDF parsing**, **AI-driven chunking**, and **advanced retrieval** to create a truly intelligent document processing system.
 
 ### 🎯 Key Innovations
 
-- **🧠 Agentic Chunking**: AI agents dynamically group related content with semantic understanding
 - **👁️ Visual Intelligence**: Detect signatures, diagrams, checkboxes, and other visual elements
+- **🧠 Agentic Chunking**: AI agents dynamically group related content with semantic understanding
 - **🔄 Dual Strategy**: Combine semantic and agentic chunking for optimal content organization
+- - **🎯 Context-Aware**: Retrieve the most relevant information for any query
 - **⚡ Flexible Deployment**: Library, API server, or individual components
-- **🎯 Context-Aware**: Retrieve the most relevant information for any query
 
 ---
 
