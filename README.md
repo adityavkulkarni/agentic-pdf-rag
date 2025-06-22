@@ -1,355 +1,452 @@
-# RAG Pipeline Library
+# 🚀 Agentic PDF RAG Pipeline
 
-A comprehensive Retrieval-Augmented Generation (RAG) pipeline for intelligent document processing, featuring advanced PDF parsing, dual chunking strategies, vector storage, and AI-powered question answering.
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Azure OpenAI](https://img.shields.io/badge/Azure-OpenAI-0078d4.svg)](https://azure.microsoft.com/en-us/products/cognitive-services/openai-service)
 
-## 🚀 Features
+> **A next-generation RAG pipeline that transforms any document into intelligent, queryable knowledge using AI-powered parsing, dual chunking strategies, and vector search.**
 
-### 📄 Advanced PDF Processing
-- **AI-Powered Parsing**: Intelligent text extraction using Azure OpenAI with OCR fallback
-- **Layout Preservation**: Maintains document structure including headers, tables, and formatting
-- **Visual Element Detection**: Identifies and extracts signatures, diagrams, forms, and visual components
-- **Multi-Page Support**: Processes complex documents with multiple pages and sections
-- **Image Analysis**: Automatic grouping and analysis of text regions using computer vision
+## 🌟 Why Agentic PDF RAG?
 
-### 🧩 Dual Chunking Strategies
-- **Semantic Chunking**: Uses embedding similarity to create contextually coherent chunks
-- **Agentic Chunking**: AI-driven intelligent grouping based on content themes and relationships
-- **Configurable Parameters**: Customizable chunk sizes, overlap, and splitting strategies
-- **Context-Aware Optimization**: Adapts chunking based on document type and content
+Traditional document processing pipelines struggle with complex layouts, visual elements, and semantic understanding. Our library combines **intelligent PDF parsing**, **AI-driven chunking**, and **advanced retrieval** to create a truly intelligent document processing system.
 
-### 🗄️ Vector Database Integration
-- **PostgreSQL + pgvector**: High-performance vector similarity search
-- **Multi-Level Embeddings**: Stores both document-level and chunk-level embeddings
-- **Metadata Storage**: Rich metadata using JSONB for flexible querying
-- **Batch Operations**: Efficient bulk insertion and retrieval operations
-- **Similarity Search**: Cosine similarity-based document and chunk retrieval
+### 🎯 Key Innovations
 
-### 🤖 AI Integration
-- **Azure OpenAI Support**: Native integration with Azure OpenAI services
-- **Multiple Models**: Support for different models for parsing, chunking, and generation
-- **Structured Outputs**: Pydantic-based structured data extraction
-- **Custom Extraction**: Configurable field extraction for specific document types
-- **Embedding Generation**: Automatic embedding creation for all text content
+- **🧠 Agentic Chunking**: AI agents dynamically group related content with semantic understanding
+- **👁️ Visual Intelligence**: Detect signatures, diagrams, checkboxes, and other visual elements
+- **🔄 Dual Strategy**: Combine semantic and agentic chunking for optimal content organization
+- **⚡ Flexible Deployment**: Library, API server, or individual components
+- **🎯 Context-Aware**: Retrieve the most relevant information for any query
 
-### 🔄 Complete RAG Pipeline
-- **End-to-End Processing**: From PDF input to AI-generated responses
-- **Context Retrieval**: Intelligent context selection based on query similarity
-- **Response Generation**: AI-powered answer generation with source attribution
-- **Multi-Document Support**: Query across multiple documents simultaneously
-- **Extensible Architecture**: Modular design for easy customization and extension
+---
 
-## 📦 Installation
+## 🏗️ Architecture Overview
+
+```
+📄 Document Input → 🔍 AI Parser → 🧠 Dual Chunking → 🗄️ Vector DB → 🔍 Retrieval → 💬 Generation
+    (PDF)               (OCR+LLM)     (Semantic+AI)      (PostgreSQL)    (Hybrid)      (Azure OpenAI)
+```
+
+### Core Components
+
+| Component | Purpose | Key Features |
+|-----------|---------|--------------|
+| **AgenticPDFParser** | Intelligent document parsing | OCR, visual element detection, LLM understanding |
+| **AgenticChunker** | AI-powered content grouping | Semantic analysis, dynamic titles, context-aware |
+| **PDFChunker** | Dual chunking orchestration | Semantic + agentic strategies, embedding generation |
+| **DBHandler** | Vector database operations | PostgreSQL + pgvector, similarity search |
+| **RetrievalEngine** | Context retrieval | Multi-strategy search, ranking, aggregation |
+| **GenerationEngine** | Response synthesis | Context-aware generation, custom instructions |
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
+
 - Python 3.8+
 - PostgreSQL with pgvector extension
-- Tesseract OCR engine
-- Azure OpenAI API access
+- Azure OpenAI API keys
+- Tesseract OCR
 
-### Install Dependencies
-
-```bash
-pip install openai pydantic langchain-experimental langchain-core
-pip install psycopg2-binary python-dotenv configparser
-pip install pdf2image pytesseract Pillow opencv-python numpy
-```
-
-### System Dependencies
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get update
-sudo apt-get install tesseract-ocr poppler-utils
-```
-
-**macOS:**
-```bash
-brew install tesseract poppler
-```
-
-**Windows:**
-- Install Tesseract from: https://github.com/UB-Mannheim/tesseract/wiki
-- Install Poppler from: https://blog.alivate.com.au/poppler-windows/
-
-### PostgreSQL Setup
-
-```sql
--- Install pgvector extension
-CREATE EXTENSION IF NOT EXISTS vector;
-
--- The library will automatically create required tables
-```
-
-## ⚙️ Configuration
-
-### 1. Environment Variables
-
-Create a `.env` file in your project root:
+### 1. Installation
 
 ```bash
-AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
+# Clone the repository
+git clone <repository-url>
+cd agentic-pdf-rag
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install Tesseract OCR (Ubuntu/Debian)
+sudo apt-get install tesseract-ocr
+
+# Or macOS
+brew install tesseract
 ```
 
-### 2. Configuration File
+### 2. Configuration
 
 Create `config/config.ini`:
 
 ```ini
 [models]
-agentic_pdf_parser_model = gpt-4o-2024-08-06
+agentic_pdf_parser_model = gpt-4o
 agentic_chunker_model = gpt-4o
 openai_embedding_model = text-embedding-3-large
 
 [azure_openai]
-openai_endpoint = https://your-resource-name.openai.azure.com/
-openai_embeddings_endpoint = https://your-resource-name.openai.azure.com/
-openai_api_version = 2024-08-01-preview
-openai_embeddings_api_version = 2024-08-01-preview
+openai_endpoint = https://your-resource.openai.azure.com/
+openai_embeddings_endpoint = https://your-embeddings-resource.openai.azure.com/
+openai_api_version = 2024-08-01
+openai_embeddings_api_version = 2024-08-01
 
 [directories]
 output_directory = pdf_images
 
 [database]
 dbname = rag_database
-user = your_db_user
-password = your_db_password
+user = postgres
+password = your_password
 host = localhost
 port = 5432
 ```
 
-## 🔧 Quick Start
+### 3. Environment Variables
 
-### Basic Usage
+```bash
+export AZURE_OPENAI_API_KEY="your-api-key"
+```
+
+---
+
+## 💡 Usage Modes
+
+### Mode 1: 📚 Library Integration (Recommended)
+
+Perfect for programmatic control and custom workflows.
 
 ```python
-from your_library import RAGPipeline
+import os
+from agentic_pdf_rag import RAGPipeline
 
-# Initialize the pipeline
-pipeline = RAGPipeline(
+# Initialize pipeline
+rag_pipeline = RAGPipeline(
     config_file="config/config.ini",
-    openai_api_key="your-api-key",  # Optional: overrides config
-    openai_embeddings_api_key="your-embeddings-key"  # Optional
+    openai_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+    openai_embeddings_api_key=os.getenv("AZURE_OPENAI_API_KEY")
 )
 
-# Parse a PDF document
-pdf_parser = pipeline.get_agentic_pdf_parser()
-parsed_result = pdf_parser.run_pipline(
-    pdf_file="path/to/your/document.pdf",
-    file_name="document.pdf"
+# Option A: Step-by-step processing
+parsed_pdf = rag_pipeline.parse_pdf(pdf_path="document.pdf")
+chunks = rag_pipeline.create_chunks(parsed_pdf)
+rag_pipeline.add_document_to_db(parsed_pdf, chunks)
+
+# Option B: One-shot processing
+rag_pipeline.add_document_to_knowledge(pdf_path="document.pdf")
+
+# Query your documents
+context = rag_pipeline.retrieve_context(query="What are the key terms?")
+response = rag_pipeline.generate_response(
+    query="What are the key terms?", 
+    context=context,
+    additional_instructions="Focus on legal terminology."
 )
 
-# Create chunks
-chunker = pipeline.get_pdf_chunker(
-    agentic_pdf_parser=pdf_parser,
-    agentic_chunker_context="Legal contract analysis"
+# Or get direct response
+response = rag_pipeline.get_final_response(
+    query="Summarize the main points",
+    additional_instructions="Provide a bullet-point summary."
 )
-chunks = chunker.run_pipline()
+```
 
-# Store in database
-db_handler = pipeline.get_db_handler()
-db_handler.insert_document(parsed_result)
-db_handler.batch_insert_embeddings(
-    agentic_chunks=chunks["agentic_chunks"],
-    semantic_chunks=chunks["semantic_chunks"]
+### Mode 2: 🌐 Client-Server API
+
+Ideal for distributed systems and web applications.
+
+**Start the server:**
+```bash
+python server.py
+```
+
+**Use the client:**
+```python
+from client import RAGClient
+
+client = RAGClient("http://localhost:5000")
+
+# Add document to knowledge base
+client.add_document_to_context(
+    pdf_path="contract.pdf", 
+    filename="contract.pdf",
+    agentic_chunker_context="Legal document processing"
 )
 
 # Query the system
-retrieval_engine = pipeline.get_retrieval_engine()
-generation_engine = pipeline.get_generation_engine()
-
-query = "What are the key terms of this contract?"
-context = retrieval_engine.get_context(query)
-response = generation_engine.generate_response(query, context)
+context = client.get_context(query="What are the payment terms?")
+response = client.get_final_response(
+    query="What are the payment terms?",
+    context=context,
+    additional_instructions="Focus on dates and amounts."
+)
 
 print(response)
 ```
 
-### Advanced Usage
+**Available API Endpoints:**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/get_config` | Retrieve current configuration |
+| POST | `/set_config` | Update configuration |
+| POST | `/parse_pdf` | Process PDF file |
+| POST | `/add_document_to_context` | Add document to knowledge base |
+| GET | `/get_documents` | Get all stored documents |
+| POST | `/get_context` | Retrieve context for query |
+| POST | `/get_final_response` | Generate response with context |
+
+### Mode 3: 🔧 Component-Level Control
+
+Maximum flexibility for custom implementations.
 
 ```python
-# Custom chunking parameters
-chunker = pipeline.get_pdf_chunker(
-    agentic_chunker_context="Financial document analysis",
-    buffer_size=2,
-    breakpoint_threshold_type="percentile",
-    min_chunk_size=200,
-    number_of_chunks=15
+from agentic_pdf_rag.agentic_pdf_parser import AgenticPDFParser
+from agentic_pdf_rag.agentic_chunker import AgenticChunker
+from agentic_pdf_rag.db_handler import DBHandler
+
+# Custom PDF parser
+parser = AgenticPDFParser(
+    model="gpt-4o-2024-08-06",
+    openai_endpoint="your-endpoint",
+    openai_api_key="your-key"
 )
 
-# Custom extraction with structured output
-from pydantic import BaseModel, Field
-
-class ContractTerms(BaseModel):
-    parties: list[str] = Field(description="Contract parties")
-    effective_date: str = Field(description="Contract effective date")
-    termination_date: str = Field(description="Contract termination date")
-    key_obligations: list[str] = Field(description="Key obligations")
-
-custom_prompt = "Extract contract terms from: <>"  # <> will be replaced with document text
-extracted_data = pdf_parser.get_custom_extraction(
-    custom_extraction_prompt=custom_prompt,
-    custom_feature_model=ContractTerms
+# Custom chunker with specific context
+chunker = AgenticChunker(
+    context="Scientific research papers",
+    generate_new_metadata_ind=True
 )
 
-# Advanced querying
-similar_docs = retrieval_engine.get_similar_document(
-    query_embeddings=db_handler.embedding_client.create_embedding_dict([query])[query],
-    top_k=10
-)
-
-# Context-aware generation
-response = generation_engine.generate_response(
-    query=query,
-    context=context,
-    additional_instructions="Focus on legal implications and provide specific citations."
+# Custom database handler
+db = DBHandler(
+    dbname="custom_db",
+    user="user",
+    password="pass",
+    host="localhost",
+    port=5432
 )
 ```
 
-## 📚 API Reference
+---
 
-### RAGPipeline
+## 🎯 Advanced Features
 
-Main orchestrator class that provides factory methods for all components.
+### 📄 Intelligent PDF Processing
 
-#### Methods:
-- `get_agentic_pdf_parser()` → `AgenticPDFParser`
-- `get_pdf_chunker(**kwargs)` → `PDFChunker`  
-- `get_db_handler()` → `DBHandler`
-- `get_retrieval_engine(db_handler=None)` → `RetrievalEngine`
-- `get_generation_engine(llm_client=None)` → `GenerationEngine`
-- `get_openai_client()` → `AzureOpenAIChatClient`
+Our AI-powered parser goes beyond simple OCR:
 
-### AgenticPDFParser
-
-Intelligent PDF parsing with AI-powered text extraction and analysis.
-
-#### Key Methods:
-- `parse_file(pdf_file, file_name=None)` - Convert PDF to processable format
-- `get_image_data()` - Extract and process page images
-- `process_text()` - Perform OCR and AI-based text extraction
-- `get_summary_and_ner()` - Generate document summary and extract named entities
-- `run_pipline(pdf_file, file_name=None, custom_extraction_prompt=None, custom_feature_model=None)` - Complete processing pipeline
-
-### PDFChunker
-
-Dual-strategy document chunking system.
-
-#### Key Methods:
-- `get_semantic_chunks(sentences=None, embeddings=True, metadata={})` - Create semantic chunks
-- `get_agentic_chunks(embeddings=True)` - Create AI-driven chunks
-- `run_pipline(agentic_pdf_parser=None, agentic_chunker_context="")` - Complete chunking pipeline
-
-#### Parameters:
-- `buffer_size` - Size of context buffer for semantic chunking
-- `breakpoint_threshold_type` - Method for determining chunk boundaries
-- `min_chunk_size` - Minimum characters per chunk
-- `number_of_chunks` - Target number of chunks
-
-### DBHandler
-
-PostgreSQL vector database management.
-
-#### Key Methods:
-- `insert_document(document)` - Store complete document with metadata
-- `batch_insert_embeddings(agentic_chunks, semantic_chunks)` - Bulk insert chunks
-- `similarity_search_chunks(table_name, query_embedding, embedding_column, top_k=5)` - Find similar chunks
-- `similarity_search_document(table_name, query_embedding, top_k=5)` - Find similar documents
-
-### RetrievalEngine
-
-Context retrieval and query analysis.
-
-#### Key Methods:
-- `get_similar_chunks(query_embeddings)` - Retrieve similar text chunks
-- `get_similar_chunk_by_summary(query_embeddings, top_k=5)` - Retrieve by document summary
-- `get_similar_document(query_embeddings, top_k=5)` - Retrieve similar documents
-- `get_context(query)` - Get comprehensive context for query
-
-### GenerationEngine
-
-AI-powered response generation.
-
-#### Key Methods:
-- `generate_response(query, context, additional_instructions=None)` - Generate contextual responses
-
-## 🛠️ Architecture
-
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   PDF Input     │───▶│  AgenticPDFParser │───▶│   Parsed Data   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                                          │
-                                                          ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  User Query     │    │   PDFChunker     │◀───│   Text Content  │  
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                        │                      
-         │                        ▼                      
-         │              ┌─────────────────┐              
-         │              │   Dual Chunks   │              
-         │              │ Semantic+Agentic│              
-         │              └─────────────────┘              
-         │                        │                      
-         │                        ▼                      
-         │              ┌─────────────────┐              
-         │              │   PostgreSQL    │              
-         │              │   + pgvector    │              
-         │              └─────────────────┘              
-         │                        │                      
-         ▼                        ▼                      
-┌─────────────────┐    ┌──────────────────┐              
-│ RetrievalEngine │◀───│   Vector Store   │              
-└─────────────────┘    └──────────────────┘              
-         │                                                
-         ▼                                                
-┌─────────────────┐    ┌──────────────────┐              
-│   Context       │───▶│ GenerationEngine │              
-└─────────────────┘    └──────────────────┘              
-                                │                        
-                                ▼                        
-                       ┌─────────────────┐              
-                       │ AI Response     │              
-                       └─────────────────┘              
+```python
+# Extract with custom prompts
+parser = AgenticPDFParser()
+result = parser.run_pipeline(
+    pdf_file="complex_document.pdf",
+    custom_extraction_prompt="Extract all financial figures and dates",
+    custom_feature_model=CustomFinancialModel
+)
 ```
 
-## 🔍 Use Cases
+**Capabilities:**
+- **OCR Excellence**: Confidence-based text filtering (>30% confidence)
+- **Visual Intelligence**: Signatures, diagrams, checkboxes, stamps
+- **Structured Extraction**: Tables, forms, key-value pairs
+- **Multi-language Support**: Tesseract-powered OCR
+- **Metadata Generation**: Automated summaries and entity recognition
 
-- **Legal Document Analysis**: Contract review, clause extraction, compliance checking
-- **Financial Document Processing**: Report analysis, data extraction, regulatory compliance
-- **Research Paper Analysis**: Academic document processing, citation extraction, summarization
-- **Technical Documentation**: Manual processing, FAQ generation, knowledge base creation
-- **Medical Records**: Clinical document analysis, patient data extraction (with appropriate privacy controls)
+### 🧠 Dual Chunking Strategy
 
-## 🤝 Contributing
+**Semantic Chunking:**
+```python
+chunker = PDFChunker(
+    semantic_chunker_buffer_size=2,
+    semantic_chunker_breakpoint_threshold_type="percentile",
+    semantic_chunker_min_chunk_size=256
+)
+```
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+**Agentic Chunking:**
+```python
+chunker = AgenticChunker(
+    context="Legal contracts focus on clauses and obligations",
+    generate_new_metadata_ind=True
+)
+```
+
+### 🔍 Advanced Retrieval
+
+```python
+# Multi-strategy retrieval
+retriever = RetrievalEngine(db_handler=db)
+
+# Content-based search
+chunks = retriever.get_similar_chunks(query_embeddings)
+
+# Summary-based search  
+chunks = retriever.get_similar_chunk_by_summary(query_embeddings, top_k=10)
+
+# Document-level search
+docs = retriever.get_similar_document(query_embeddings)
+```
+
+---
+
+## 🛠️ Configuration Options
+
+### Chunking Parameters
+
+| Parameter | Description | Default | Options |
+|-----------|-------------|---------|---------|
+| `buffer_size` | Semantic chunker buffer | 1 | 1-5 |
+| `breakpoint_threshold_type` | Threshold calculation method | "percentile" | "percentile", "standard_deviation" |
+| `min_chunk_size` | Minimum chunk size | 128 | 64-512 |
+| `sentence_split_regex` | Sentence splitting pattern | `r"(?<=[.?!])\s+"` | Custom regex |
+
+### Model Configuration
+
+```python
+# Custom model settings
+pipeline = RAGPipeline(
+    agentic_pdf_parser_model="gpt-4o-2024-08-06",
+    agentic_chunker_model="gpt-4o-mini",  # Use smaller model for chunking
+    openai_embedding_model="text-embedding-3-large"
+)
+```
+
+---
+
+## 📊 Performance & Monitoring
+
+### Workflow Stages
+
+1. **📥 Document Ingestion** - PDF processing and conversion
+2. **🔍 Content Extraction** - OCR + LLM-based analysis  
+3. **🧠 Intelligent Chunking** - Dual strategy implementation
+4. **🔢 Embedding Generation** - Vector representations
+5. **💾 Database Storage** - Structured storage with indexing
+6. **❓ Query Processing** - User query analysis
+7. **🔍 Context Retrieval** - Multi-strategy similarity search
+8. **💬 Response Generation** - LLM-based synthesis
+
+### Monitoring Tips
+
+Coming soon
+
+---
+
+## 🔧 Component Installation
+
+**1. PostgreSQL Connection Issues**
+```bash
+# Ensure pgvector is installed
+sudo apt-get install postgresql-14-pgvector
+
+# Enable extension in PostgreSQL
+CREATE EXTENSION vector;
+```
+
+**2. OCR Not Working**
+```bash
+# Install Tesseract language packs
+sudo apt-get install tesseract-ocr-eng tesseract-ocr-fra
+```
+
+### Debug Mode
+
+The library has logging integrated, set the logging level to debug.
+
+```python
+# Enable debug logging
+import logging
+logging.getLogger().setLevel(logging.DEBUG)
+
+# Verbose chunker output
+chunker = AgenticChunker(print_logging=True)
+```
+
+---
+
+## 📚 Examples
+
+### Legal Document Processing
+
+```python
+# Specialized legal document processing
+rag_pipeline = RAGPipeline()
+
+# Add context for legal documents
+rag_pipeline.add_document_to_knowledge(
+    pdf_path="contract.pdf",
+    agentic_chunker_context="Legal contract with focus on terms, obligations, and clauses"
+)
+
+# Query with legal focus
+response = rag_pipeline.get_final_response(
+    query="What are the termination conditions?",
+    additional_instructions="You are a legal AI assistant. Provide precise legal analysis."
+)
+```
+
+### Research Paper Analysis
+
+```python
+# Scientific paper processing
+rag_pipeline.add_document_to_knowledge(
+    pdf_path="research_paper.pdf",
+    agentic_chunker_context="Academic research paper with methodology, results, and conclusions"
+)
+
+response = rag_pipeline.get_final_response(
+    query="What methodology was used?",
+    additional_instructions="Focus on experimental design and statistical methods."
+)
+```
+
+### Multi-Document Knowledge Base
+
+```python
+# Build comprehensive knowledge base
+documents = ["doc1.pdf", "doc2.pdf", "doc3.pdf"]
+
+for doc in documents:
+    rag_pipeline.add_document_to_knowledge(
+        pdf_path=doc,
+        agentic_chunker_context=f"Technical documentation for {doc}"
+    )
+
+# Cross-document queries
+response = rag_pipeline.get_final_response(
+    query="Compare the approaches across all documents",
+    additional_instructions="Synthesize information from multiple sources."
+)
+```
+
+---
+
+## 📋 Dependencies
+
+### Core Dependencies
+
+```txt
+flask>=2.0.0                    # Web framework for API server
+psycopg2-binary>=2.9.0         # PostgreSQL adapter
+openai>=1.0.0                  # Azure OpenAI client
+pdf2image>=1.16.0              # PDF to image conversion
+pytesseract>=0.3.10            # OCR functionality
+opencv-python>=4.5.0           # Image processing
+Pillow>=8.0.0                  # Image handling
+pydantic>=2.0.0                # Data validation
+langchain-experimental>=0.0.40  # Semantic chunking
+numpy>=1.21.0                  # Numerical operations
+python-dotenv>=0.19.0          # Environment variables
+requests>=2.28.0               # HTTP client
+```
+
+### System Dependencies
+
+- **PostgreSQL 12+** with pgvector extension
+- **Tesseract OCR** for text extraction
+- **Python 3.8+** for compatibility
+
+---
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
-
-For issues and questions:
-- Create an issue in the GitHub repository
-- Check the documentation for common solutions
-- Review the configuration guide for setup problems
-
-## 🏗️ Roadmap
-
-- [ ] Multi-format document support (Word, Excel, etc.)
-- [ ] Additional vector database backends
-- [ ] Web interface for document management
-- [ ] API server implementation
-- [ ] Docker containerization
-- [ ] Cloud deployment guides
-- [ ] Performance optimization tools
-- [ ] Advanced query analysis features
-
 ---
 
-**Note**: This library requires Azure OpenAI API access and a PostgreSQL database with pgvector extension. Ensure you have the necessary credentials and infrastructure before getting started.
+<div align="center">
+
+**Built with ❤️ for intelligent document processing**
+
+</div>
