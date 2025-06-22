@@ -323,15 +323,6 @@ docs = retriever.get_similar_document(query_embeddings)
 
 ## 🛠️ Configuration Options
 
-### Chunking Parameters
-
-| Parameter | Description | Default | Options |
-|-----------|-------------|---------|---------|
-| `buffer_size` | Semantic chunker buffer | 1 | 1-5 |
-| `breakpoint_threshold_type` | Threshold calculation method | "percentile" | "percentile", "standard_deviation" |
-| `min_chunk_size` | Minimum chunk size | 128 | 64-512 |
-| `sentence_split_regex` | Sentence splitting pattern | `r"(?<=[.?!])\s+"` | Custom regex |
-
 ### Model Configuration
 
 ```python
