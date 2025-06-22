@@ -473,13 +473,7 @@ requests>=2.28.0               # HTTP client
 - **Agentic Chunking:**  
   Uses agentic chunker inspired by [Agentic-Chunker](https://github.com/Ranjith-JS2803/Agentic-Chunker).
 
----
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
 
 <div align="center">
 
