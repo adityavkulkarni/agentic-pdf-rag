@@ -199,17 +199,17 @@ client = RAGClient("http://localhost:5000")
 
 # Add document to knowledge base
 client.add_document_to_context(
-    pdf_path="contract.pdf", 
-    filename="contract.pdf",
-    agentic_chunker_context="Legal document processing"
+  pdf_path="contract.pdf",
+  filename="contract.pdf",
+  agentic_chunker_context="Legal document processing"
 )
 
 # Query the system
 context = client.get_context(query="What are the payment terms?")
 response = client.get_final_response(
-    query="What are the payment terms?",
-    context=context,
-    additional_instructions="Focus on dates and amounts."
+  query="What are the payment terms?",
+  context=context,
+  additional_instructions="Focus on dates and amounts."
 )
 
 print(response)

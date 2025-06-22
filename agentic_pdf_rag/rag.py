@@ -58,14 +58,22 @@ class RetrievalEngine:
             "similarity": r[2],
         } for r in semantic_response if r is not None]
 
+    def get_document_outlines(self):
+        docs = self.db_handler.get_documents()
+        # return f"{filename}: {summary}" for each doc
+
     def analyze_query(self, query):
         # Decide if this is single file or multifile query
         # if single file, proceed with chunk analysis
         # if multifile, search with summary_query
         # return (mode, possible_filenames, summary_query)
+        # docs_and_summaries = self.get_documents_outline()
+        # self.llm_client() -> call for getting all the relevant docs
+        # list of filenames to analyse, enhanced information for similarity match
         pass
 
     def get_context(self, query):
+        # list_of_files, augmented_query = self.analyze_query(query)
         query_embeddings = self.db_handler.embedding_client.create_embedding_dict([query])[query]
         context = sorted(
             self.get_similar_chunks(query_embeddings) +
