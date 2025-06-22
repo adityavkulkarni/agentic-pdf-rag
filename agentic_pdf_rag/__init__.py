@@ -17,11 +17,40 @@ __all__ = [
 ]
 
 class RAGPipeline:
-    def __init__(self, config_file=None, openai_api_key=None, openai_embeddings_api_key=None):
+    def __init__(self,
+                 config_file=None,
+                 openai_api_key=None,
+                 openai_embeddings_api_key=None,
+                 init=True,
+                 custom_embedding_model=None,
+                 agentic_chunker_context="",
+                 buffer_size=1,
+                 breakpoint_threshold_type="percentile",
+                 number_of_chunks=None,
+                 sentence_split_regex=r"(?<=[.?!])\s+",
+                 min_chunk_size=None,
+                 ):
         if config_file is None:
             config_file = os.path.join(os.getcwd(), "config", "config.ini")
         self.config = config_manager.Config(config_file=config_file, openai_api_key=openai_api_key, openai_embeddings_api_key=openai_embeddings_api_key)
         config_manager.config = self.config
+        self.pdf_parser = self.get_agentic_pdf_parser() if init else None
+        self.pdf_chunker = (
+            self.get_pdf_chunker(agentic_pdf_parser=None,
+                        custom_embedding_model=custom_embedding_model,
+                        agentic_chunker_context=agentic_chunker_context,
+                        buffer_size=buffer_size,
+                        breakpoint_threshold_type=breakpoint_threshold_type,
+                        number_of_chunks=number_of_chunks,
+                        sentence_split_regex=sentence_split_regex,
+                        min_chunk_size=min_chunk_size)
+            if init else None
+        )
+        self.db_handler = self.get_db_handler() if init else None
+        self.openai_client = self.get_openai_client() if init else None
+        self.openai_embeddings_client = self.get_openai_embeddings_client() if init else None
+        self.retrieval_engine = self.get_retrieval_engine(db_handler=self.db_handler) if init else None
+        self.generator = self.get_generation_engine(llm_client=self.openai_client) if init else None
 
     def get_agentic_pdf_parser(self):
         return AgenticPDFParser(
@@ -90,3 +119,44 @@ class RAGPipeline:
             model=self.config.openai_embedding_model,
             api_version=self.config.openai_embedding_api_version
         )
+
+    def parse_pdf(self, pdf_path, filename=None):
+        self.parsed_pdf = self.pdf_parser.run_pipline(pdf_file=pdf_path, file_name=filename)
+        return self.parsed_pdf
+
+    def create_chunks(self, agentic_pdf_parser=None, agentic_chunker_context="", pdf_path=None, filename=None):
+        if agentic_pdf_parser is None and  self.parsed_pdf is None:
+            self.parse_pdf(pdf_path, filename)
+        self.chunks = self.pdf_chunker.run_pipline(agentic_pdf_parser=self.pdf_parser, agentic_chunker_context=agentic_chunker_context)
+        return self.chunks
+
+    def add_document_to_db(self, parsed_pdf=None, chunks=None):
+        parsed_pdf = parsed_pdf or self.parsed_pdf
+        chunks = chunks or self.chunks
+        self.db_handler.insert_document(parsed_pdf)
+        self.db_handler.batch_insert_embeddings(
+            agentic_chunks=chunks["agentic_chunks"],
+            semantic_chunks=chunks["semantic_chunks"]
+        )
+
+    def add_document_to_knowledge(self, pdf_path, filename=None, agentic_chunker_context=""):
+        self.parse_pdf(pdf_path, filename)
+        self.create_chunks(agentic_pdf_parser=self.pdf_parser, agentic_chunker_context=agentic_chunker_context)
+        self.add_document_to_db(parsed_pdf=self.parsed_pdf, chunks=self.chunks)
+
+    def retrieve_context(self, query):
+        context = self.retrieval_engine.get_context(query=query)
+        return context
+
+    def generate_response(self, query, context="",additional_instructions=""):
+        response = self.generator.generate_response(
+            query=query,
+            context=context,
+            additional_instructions=additional_instructions
+        )
+        return response
+
+    def get_final_response(self, query, additional_instructions=""):
+        context = self.retrieve_context(query)
+        response = self.generate_response(query, context, additional_instructions)
+        return response
