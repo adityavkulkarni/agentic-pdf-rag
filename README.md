@@ -53,7 +53,7 @@ Traditional document processing pipelines struggle with complex layouts, visual 
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/adityavkulkarni/agentic-pdf-rag
 cd agentic-pdf-rag
 
 # Install dependencies
