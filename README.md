@@ -437,6 +437,10 @@ requests>=2.28.0               # HTTP client
 - **Tesseract OCR** for text extraction
 - **Python 3.8+** for compatibility
 
+### Acknowledgements
+- **Agentic Chunking:**  
+  Uses agentic chunker inspired by [Agentic-Chunker](https://github.com/Ranjith-JS2803/Agentic-Chunker).
+
 ---
 
 ## 📄 License
