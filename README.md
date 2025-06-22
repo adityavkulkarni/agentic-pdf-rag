@@ -15,7 +15,7 @@ Traditional document processing pipelines struggle with complex layouts, visual 
 - **👁️ Visual Intelligence**: Detect signatures, diagrams, checkboxes, and other visual elements
 - **🧠 Agentic Chunking**: AI agents dynamically group related content with semantic understanding
 - **🔄 Dual Strategy**: Combine semantic and agentic chunking for optimal content organization
-- - **🎯 Context-Aware**: Retrieve the most relevant information for any query
+- **🎯 Context-Aware**: Retrieve the most relevant information for any query
 - **⚡ Flexible Deployment**: Library, API server, or individual components
 
 ---
