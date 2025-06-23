@@ -7,18 +7,17 @@
 > **A next-generation RAG pipeline that transforms any document into intelligent, queryable knowledge using AI-powered parsing, dual chunking strategies, and vector search.**
 
 <!-- TOC -->
-* [🚀 Agentic RAG Pipeline for PDFs](#-agentic-rag-pipeline-for-pdfs)
-  * [🌟 Why Agentic RAG?](#-why-agentic-rag)
-  * [🏗️ Architecture Overview](#-architecture-overview)
-  * [🛠️ Architecture](#-architecture)
-  * [🎯 Intelligent Retrieval Strategy](#-intelligent-retrieval-strategy)
-  * [🚀 Quick Start](#-quick-start)
-  * [💡 Usage Modes](#-usage-modes)
-  * [🎯 Individual Component](#-individual-component)
-  * [🛠️ Configuration Options](#-configuration-options)
-  * [🔧 Component Installation](#-component-installation)
-  * [📚 Examples](#-examples)
-  * [📋 Dependencies](#-dependencies)
+* [🌟 Why Agentic RAG?](#-why-agentic-rag)
+* [🏗️ Architecture Overview](#-architecture-overview)
+* [🛠️ Architecture](#-architecture)
+* [🎯 Intelligent Retrieval Strategy](#-intelligent-retrieval-strategy)
+* [🚀 Quick Start](#-quick-start)
+* [💡 Usage Modes](#-usage-modes)
+* [🎯 Individual Component](#-individual-component)
+* [🛠️ Configuration Options](#-configuration-options)
+* [🔧 Component Installation](#-component-installation)
+* [📚 Examples](#-examples)
+* [📋 Dependencies](#-dependencies)
 <!-- TOC -->
 
 ## 🌟 Why Agentic RAG?
