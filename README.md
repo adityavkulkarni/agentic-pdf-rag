@@ -221,18 +221,6 @@ detailed_context = retriever.get_context(
 )
 ```
 
-### Best Practices
-
-#### ✅ **For Summary Queries:**
-- Use comparison keywords: "compare", "analyze", "overview"
-- Ask about trends, patterns, or high-level insights  
-- Don't specify exact page numbers or specific details
-
-#### ✅ **For Chunk Queries:**
-- Be specific about what you want: "exact figure", "specific clause"
-- Use location indicators: "in section X", "on page Y"
-- Ask for verbatim content or precise data points
-
 ---
 
 ## 🚀 Quick Start
