@@ -76,8 +76,10 @@ class RAGClient:
         response = requests.post(f"{self.base_url}/get_context", json=payload)
         return response.json()
 
-    def get_final_response(self, query, context, additional_instructions=None):
+    def get_final_response(self, query, context=None, additional_instructions=None):
         """Generate final response using context"""
+        if context is None:
+            context = self.get_context(query)["context"]
         payload = {
             "query": query,
             "context": context

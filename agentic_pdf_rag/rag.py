@@ -134,45 +134,6 @@ class RetrievalEngine:
                 text=prompt, feature_model=QueryType
             ).choices[0].message.content
         )
-        """
-        if query_type == "retrieval":
-            prompt = (
-                "You are a document retrieval expert for a RAG system. Given document outline, "
-                "your task is to identify all relevant filenames for the user's query. Follow this process:\n"
-                "### Instructions\n"
-                "1. **Analyze the query**:\n"
-                "   - Identify key entities, topics, and intent\n"
-                "   - Note any ambiguity or missing context\n"
-                "2. **Evaluate document relevance**:\n"
-                "   - For each document, check if its summary addresses:\n"
-                "     * Core query topics\n"
-                "     * Implicit requirements (time periods, comparisons, etc.)\n"
-                "     * Domain-specific concepts\n"
-                "   - Assign relevance score: Relevant/Marginal/Irrelevant\n"
-                "3. **Handle ambiguity**:\n"
-                "   - If query lacks context (e.g., missing timeframes, unspecified entities):\n"
-                "     * Augment with likely parameters from document context\n"
-                "     * Expand using synonyms and related concepts\n"
-                "   - Example:  \n"
-                "     Original: Sales data → Augmented: Q4 2023 sales figures for EMEA region\n\n"
-                "### Document Outlines\n"
-                f"{self.get_document_outlines()}\n"
-                "### Query\n"
-                f"{query}"
-            )
-            class FileNames(BaseModel):
-                files: str = Field(..., description="pipe separated list of filenames")
-                augmented_query: str = Field(..., description="augmented query")
-                class Config:
-                    extra = "forbid"
-
-            llm_response = json.loads(
-                self.llm_client.chat_completion(
-                    text=prompt, feature_model=FileNames
-                ).choices[0].message.content
-            )
-            llm_response["files"] = llm_response["files"].split("|")
-            elif query_type == "analysis":"""
         if llm_response["type"] == "summary":
             llm_response["files"] = llm_response["files"].split("|")
         else:
@@ -211,7 +172,7 @@ class RetrievalEngine:
             reverse=True
         )[:top_k]
 
-    def get_context(self, query, detailed=False):
+    def get_context(self, query, top_k=5, detailed=False):
         additional_details = self.analyze_query(query)
         logger.info(f"Query type: {additional_details.get('type')}")
         logger.info(f"Relevant files: {additional_details.get('files')}")
@@ -223,7 +184,7 @@ class RetrievalEngine:
             logger.info(f"Augmented query: {additional_details.get('augmented_query')}")
             context_dict = {}
             for file in additional_details["files"]:
-                context_dict[file] = self._query_context(query_embeddings, a_query_embeddings, top_k=3, files=[file])
+                context_dict[file] = self._query_context(query_embeddings, a_query_embeddings, top_k=top_k, files=[file])
             results = []
             for key, value in context_dict.items():
                 results += value
@@ -239,17 +200,6 @@ class GenerationEngine:
         self.llm_client = llm_client
 
     def generate_response(self, query, context, additional_instructions=None):
-        """prompt = (
-            "You are a legal language model. Use the following context retrieved from a database to answer the "
-            "user’s legal question or draft/review contract language. If relevant, quote or paraphrase the provided context. "
-            "If the context does not fully answer the question, state so explicitly and avoid speculation.\n\n"
-            "[BEGIN CONTEXT]\n"
-            f"Text from contract:\n{'\n\n'.join([r['content'] for r in context])}\n\n"
-            f"Elaborate text from contracts: \n{'\n\n'.join([r['metadata']['content'] for r in context])}\n\n"
-            "[END CONTEXT]\n\n"
-            f"User Query: {query}"
-        )
-        response = llm_client.chat_completion(text=prompt).choices[0].message.content"""
         additional_instructions = f"Additional Instructions: {additional_instructions}" if not additional_instructions else ""
         prompt = (
             "You are an intelligent assistant.\n"

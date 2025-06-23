@@ -133,7 +133,7 @@ class RAGServer:
         request_data = request.get_json()
         query = request_data.get('query')
         response = self.retriever.get_context(query=query)
-        return jsonify(response)
+        return jsonify({"context": response})
 
     def get_final_response(self):
         request_data = request.get_json()
