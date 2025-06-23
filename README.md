@@ -95,21 +95,7 @@ The system uses a sophisticated **two-phase decision process**:
 
 ##### Phase 1: Query Intent Analysis
 
-The system first analyzes your query to understand what you're really asking for:
-
-```python
-def analyze_query(self, query):
-    """
-    Determine the most efficient retrieval type:
-    - 'summary': Document-level understanding 
-    - 'chunks': Specific content extraction
-    """
-    # AI-powered analysis determines strategy...
-```
-
-##### Phase 2: Strategy Selection
-
-Based on the analysis, the system chooses between two retrieval strategies:
+The system first analyzes your query to understand what you're really asking for and chooses between two retrieval strategies:
 
 | 🎯 **Strategy** | 📋 **Best For** | 🔍 **Trigger Phrases** |
 |----------------|------------------|-------------------------|
