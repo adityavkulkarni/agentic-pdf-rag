@@ -183,12 +183,14 @@ class AgenticPDFParser:
                          os.path.isfile(os.path.join(self.groups_dir, f))]:
                 filename_with_extension = os.path.basename(os.path.join(self.groups_dir, file))
                 filename, _ = os.path.splitext(filename_with_extension)
-                # self.results.parsed_pdf.groups[filename] = self._get_ocr_text(Image.open(os.path.join(self.groups_dir, file)))
                 self.results.parsed_pdf.groups[filename] = self._get_ocr_text(os.path.join(self.groups_dir, file))
             self.results.parsed_pdf.groups = dict(sorted(self.results.parsed_pdf.groups.items()))
         self.results.parsed_pdf.pages_ocr = [self._get_ocr_text(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
         self.results.parsed_pdf.pages_descriptions = [self._get_page_content(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
-        self.results.parsed_pdf.pages_llm = [page["text_content"] for page in self.results.parsed_pdf.pages_descriptions]
+        self.results.parsed_pdf.pages_llm = [
+            f"{page['text_content']} \n\n Visual information: {page['visual_elements']}"
+            for page in self.results.parsed_pdf.pages_descriptions
+        ]
         self.results.processed = True
         logger.info(f'Extracted text from {len(self.results.parsed_pdf.pages_llm)} pages')
         return self.results.parsed_pdf
@@ -198,12 +200,14 @@ class AgenticPDFParser:
             logger.info(f'LLM for summary and named entities extraction')
             prompt = (
                 "Given the following document, please perform the following tasks:\n"
-                "- Summarize the main purpose and key obligations of the contract in 2–3 sentences.\n"
+                "- Summarize the main purpose and key points of the document."
+                "Summarize it so that it captures all the key information that may be used in retrieving "
+                "this document. Mention all the key entities, dates, locations and other specific information.\n"
                 "- Extract all named entities and return in a string with pipe separated named entities.\n"
                 "- Extract a title from the document if present, else generate a title.\n"
                 "- Extract an ID or document number or any such identifier.\n"
                 "- Return the results in the provided format.\n\n"
-                "Contract: \n"
+                "document: \n"
                 f"{'\n'.join(self.results.parsed_pdf.pages_llm)}"
             )
 
