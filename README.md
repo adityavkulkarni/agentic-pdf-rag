@@ -414,7 +414,7 @@ db = DBHandler(
 
 ---
 
-## 🎯 Advanced Features
+## 🎯 Individual Component
 
 ### 📄 Intelligent PDF Processing
 
