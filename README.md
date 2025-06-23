@@ -169,7 +169,7 @@ context = self._query_context(
 
 ### Smart Query Augmentation
 
-The system doesn't just use your exact query—it **intelligently expands** it based on metadata from stored documents for better results:
+The system doesn't just use your exact query—it **intelligently expands** it based on metadata from possible relevant documents for better results:
 
 ```python
 # Your query: "Sales data"
