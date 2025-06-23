@@ -198,7 +198,7 @@ class RetrievalEngine:
                 ).choices[0].message.content
             )
             llm_response["files"] = llm_response["files"].split("|")
-            llm_response["query_type"] = "chunks"
+            llm_response["type"] = "chunks"
         return llm_response
 
     def _query_context(self, query_embeddings, a_query_embeddings, top_k=5, files=None):
@@ -213,11 +213,14 @@ class RetrievalEngine:
 
     def get_context(self, query, detailed=False):
         additional_details = self.analyze_query(query)
+        logger.info(f"Query type: {additional_details.get('type')}")
+        logger.info(f"Relevant files: {additional_details.get('files')}")
         if additional_details.get("type") == "chunks":
             query_embeddings = self.db_handler.embedding_client.create_embedding_dict([query])[query]
             a_query_embeddings = self.db_handler.embedding_client.create_embedding_dict(
                 [additional_details["augmented_query"]]
             )[additional_details["augmented_query"]]
+            logger.info(f"Augmented query: {additional_details.get('augmented_query')}")
             context_dict = {}
             for file in additional_details["files"]:
                 context_dict[file] = self._query_context(query_embeddings, a_query_embeddings, top_k=3, files=[file])
@@ -258,6 +261,7 @@ class GenerationEngine:
             "Instructions:\n"
             "- Use the provided context to answer the user query as accurately and concisely as possible.\n"
             "- If the context does not contain enough information, indicate what is missing and suggest next steps.\n"
-            "- Always follow any additional instructions specified above."
+            "- Always follow any additional instructions specified above.\n"
+            "- Format the response clearly. Use bullet points, tables, etc wherever necessary. Use markdown formatting.\n"
         )
         return self.llm_client.chat_completion(text=prompt).choices[0].message.content
