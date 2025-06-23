@@ -9,20 +9,21 @@ rag_pipeline = RAGPipeline(
 )
 
 
-parsed_pdf = rag_pipeline.parse_pdf(pdf_path="uts_to_h.pdf")
+"""parsed_pdf = rag_pipeline.parse_pdf(pdf_path="uts_to_h.pdf")
 chunks = rag_pipeline.create_chunks(parsed_pdf)
 rag_pipeline.add_document_to_db(parsed_pdf, chunks)
 
 # Direct process and add to db
-rag_pipeline.add_document_to_knowledge(pdf_path="uts_to_h.pdf")
+rag_pipeline.add_document_to_knowledge(pdf_path="uts_to_h.pdf")"""
 
-context = rag_pipeline.retrieve_context(query="This is a sample query")
+context = rag_pipeline.retrieve_context(query="Compare the Production Sharing Agreement (PSA) #2906 and Production Sharing Agreement (PSA) #2905")
 response = rag_pipeline.generate_response(
-            query="This is a sample query",
+            query="Compare the Production Sharing Agreement (PSA) #2906 and Production Sharing Agreement (PSA) #2905",
             context=context,
             additional_instructions='additional_instructions'
 )
-print(response)
+import pprint
+pprint.pprint(response)
 # Direct generate_response
-response = rag_pipeline.get_final_response(query="This is a sample query", additional_instructions='additional_instructions')
-print(response)
+# response = rag_pipeline.get_final_response(query="This is a sample query", additional_instructions='additional_instructions')
+# print(response)

@@ -113,7 +113,9 @@ class PostgreSQLVectorClient:
 
     def similarity_search_chunks(self, table_name, query_embedding, embedding_column, top_k=5, files=None):
         """Find similar vectors using cosine similarity"""
-        clause = f"WHERE filename in ({','.join(files)})" if files else ""
+        if files:
+            files = [f"'{file}'" for file in files]
+        clause = f"""WHERE filename in ({','.join(files)})""" if files else ""
         search_query = f"""
             SELECT content, metadata, filename, 1 - ({embedding_column} <=> %s::vector) AS similarity
             FROM {table_name}

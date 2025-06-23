@@ -26,12 +26,14 @@ class RetrievalEngine:
             api_version=config.openai_api_version,
         )
 
-    def get_similar_chunks(self, query_embeddings):
+    def get_similar_chunks(self, query_embeddings, files=None):
         semantic_response = self.db_handler.similarity_search_chunks(
             table_name=self.db_handler.semantic_embedding_table,
             query_embedding=query_embeddings,
             embedding_column="embedding",
-            top_k=5)
+            top_k=5,
+            files=files
+        )
         return sorted([{
             "content": r[0],
             "metadata": r[1],
@@ -41,12 +43,14 @@ class RetrievalEngine:
             key=lambda x: x["similarity"],
             reverse=True)[:5]
 
-    def get_similar_chunk_by_summary(self, query_embeddings, top_k=5):
+    def get_similar_chunk_by_summary(self, query_embeddings, top_k=5, files=None):
         semantic_response = self.db_handler.similarity_search_chunks(
             table_name=self.db_handler.semantic_embedding_table,
             query_embedding=query_embeddings,
             embedding_column="summary_embedding",
-            top_k=top_k)
+            top_k=top_k,
+            files=files
+        )
         return sorted([{
             "content": r[0],
             "metadata": r[1],
@@ -67,35 +71,70 @@ class RetrievalEngine:
             "similarity": r[2],
         } for r in semantic_response if r is not None]
 
-    def get_document_outlines(self):
+    def get_document_outlines(self, files=None):
         docs = self.db_handler.get_documents()
-        return "\n".join(
-            [
-                f"filename: {doc[0]} | "
-                f"Summary: {doc[1]['parsed_pdf']['summary']} | "
-                f"Entities: {','.join(doc[1]['parsed_pdf']['ner'])} | "
-                f"Title: {doc[1]['parsed_pdf']['title']}"
-                for doc in docs
-            ]
-        )
+        if files:
+            return [
+                    f"filename: {doc[0]} | "
+                    f"Summary: {doc[1]['parsed_pdf']['summary']} | "
+                    f"Entities: {','.join(doc[1]['parsed_pdf']['ner'])} | "
+                    f"Title: {doc[1]['parsed_pdf']['title']}"
+                    for doc in docs if doc[0] in files
+                ]
+        else:
+            return "\n".join(
+                [
+                    f"filename: {doc[0]} | "
+                    f"Summary: {doc[1]['parsed_pdf']['summary']} | "
+                    f"Entities: {','.join(doc[1]['parsed_pdf']['ner'])} | "
+                    f"Title: {doc[1]['parsed_pdf']['title']}"
+                    for doc in docs
+                ]
+            )
 
     def analyze_query(self, query):
+        outlines = self.get_document_outlines()
         prompt = (
-            "Classify the query into:\n"
-            "- retrieval (seeks specific information from 1 or more files)\n"
-            "- analysis (requires summarization/aggregation across files).\n"
-            "Respond ONLY with retrieval or analysis.\n"
+            "**Role**: Retrieval Strategy Analyst  \n"
+            "**Task**: \n1.Determine the most efficient retrieval type for the user query:  \n"
+            "- `summary`: Retrieve document summaries only (for analysis tasks)  \n"
+            "- `chunks`: Retrieve specific text chunks (for detail extraction)  \n"
+            "2. Based on document outlines, determine all the relevant filenames "
+            "and return a pipe separated list of file names\n\n"
+            "### Decision Framework\n"
+            "1. **Analyze query intent**:\n"
+            "   - Use `summary` if the query requires:  \n"
+            "     - High-level understanding (e.g., overview, compare, trends)  \n"
+            "     - Synthesis across documents (e.g., summarize key points from all files)  \n"
+            "     - Abstract concepts (e.g., risks, strategies, performance)  \n"
+            "   - Use `chunks` if the query requires:  \n"
+            "     - Specific facts/figures (e.g., Q3 sales number, exact quote)  \n"
+            "     - Verbatim content (e.g., copy paragraph about X)  \n"
+            "     - Location-specific data (e.g., in section 3.2, from page 14)  \n\n"
+            "2. **Key decision triggers**:  \n"
+            "   | Trigger Phrases         | Retrieval Type |  \n"
+            "   |-------------------------|----------------|  \n"
+            "   | Compare/contrast        | `summary`      |  \n"
+            "   | Summarize/overview      | `summary`      |  \n"
+            "   | What are the key...     | `summary`      |  \n"
+            "   | Extract/show [specific] | `chunks`       |  \n"
+            "   | Exact value of...       | `chunks`       |  \n"
+            "   | In [file] on page...    | `chunks`       |  \n\n"
+            f"Document Outlines: {outlines}\n\n"
+            f"User Query: {query}"
         )
         class QueryType(BaseModel):
-            type: str = Field(..., description="Type of query: retrieval or analysis")
+            type: str = Field(..., description="Type of query: chunks or summary")
+            files: str = Field(..., description="pipe separated list of filenames")
             class Config:
                 extra = "forbid"
 
-        query_type = json.loads(
+        llm_response = json.loads(
             self.llm_client.chat_completion(
                 text=prompt, feature_model=QueryType
             ).choices[0].message.content
-        )["type"]
+        )
+        """
         if query_type == "retrieval":
             prompt = (
                 "You are a document retrieval expert for a RAG system. Given document outline, "
@@ -133,28 +172,23 @@ class RetrievalEngine:
                 ).choices[0].message.content
             )
             llm_response["files"] = llm_response["files"].split("|")
-        elif query_type == "analysis":
+            elif query_type == "analysis":"""
+        if llm_response["type"] == "summary":
+            llm_response["files"] = llm_response["files"].split("|")
+        else:
             prompt = (
-                "You are a query optimization agent for a RAG system. "
+                "You are a query optimization agent for a RAG system.\n"
                 "Your task is to transform the user's analysis query into a detailed, "
-                "multifaceted query that maximizes retrieval of all relevant document chunks. "
-                "Follow these steps:\n\n"
-                "1. **Decompose the analysis goal**: Break down the user's request into core subtopics, comparison dimensions, or aggregation criteria.\n"
-                "2. **Expand context**: Based on document outlines and query include:\n"
-                "   - Key entities (names, dates, concepts)\n"
-                "   - Implicit requirements (e.g., time periods, metrics, contrasting elements)\n"
-                "   - Synonyms and domain-specific terminology\n"
-                "3. **Structure for similarity search**: \n"
-                "   - Use natural language descriptions instead of keywords \n"
-                "   - Emphasize relationships between concepts (e.g., impact of X on Y)\n"
-                "   - Include both broad themes and specific sub-queries\n\n"
+                "multifaceted query that maximizes retrieval of all relevant document chunks.\n"
+                "Use the document outlines to add additional context to the query to enhance retrieval.\n"
+                "Identify all relevant filenames for the user's query.\n"
                 "**User Query**:\n"
                 f"{query}\n\n"
                 "**Document Outline**:\n"
-                f"{self.get_document_outlines()}\n\n"
+                f"{outlines}\n\n"
             )
-
             class SummaryResponse(BaseModel):
+                files: str = Field(..., description="pipe separated list of filenames")
                 augmented_query: str = Field(..., description="augmented query")
                 class Config:
                     extra = "forbid"
@@ -163,26 +197,39 @@ class RetrievalEngine:
                     text=prompt, feature_model=SummaryResponse
                 ).choices[0].message.content
             )
-        llm_response["query_type"] = query_type
-        print(llm_response)
+            llm_response["files"] = llm_response["files"].split("|")
+            llm_response["query_type"] = "chunks"
         return llm_response
 
-    def get_context(self, query):
-        additional_details = self.analyze_query(query)
-        query_embeddings = self.db_handler.embedding_client.create_embedding_dict([query])[query]
-        a_query_embeddings = self.db_handler.embedding_client.create_embedding_dict(
-            [additional_details["augmented_query"]]
-        )[additional_details["augmented_query"]]
-        context = sorted(
-            self.get_similar_chunks(query_embeddings) +
-            self.get_similar_chunk_by_summary(query_embeddings) +
-            self.get_similar_chunks(a_query_embeddings) +
-            self.get_similar_chunk_by_summary(a_query_embeddings),
+    def _query_context(self, query_embeddings, a_query_embeddings, top_k=5, files=None):
+        return sorted(
+            self.get_similar_chunks(query_embeddings, files=files) +
+            self.get_similar_chunk_by_summary(query_embeddings, files=files) +
+            self.get_similar_chunks(a_query_embeddings, files=files) +
+            self.get_similar_chunk_by_summary(a_query_embeddings, files=files),
             key=lambda x: x["similarity"],
             reverse=True
-        )[:5]
-        return context
+        )[:top_k]
 
+    def get_context(self, query, detailed=False):
+        additional_details = self.analyze_query(query)
+        if additional_details.get("type") == "chunks":
+            query_embeddings = self.db_handler.embedding_client.create_embedding_dict([query])[query]
+            a_query_embeddings = self.db_handler.embedding_client.create_embedding_dict(
+                [additional_details["augmented_query"]]
+            )[additional_details["augmented_query"]]
+            context_dict = {}
+            for file in additional_details["files"]:
+                context_dict[file] = self._query_context(query_embeddings, a_query_embeddings, top_k=3, files=[file])
+            results = []
+            for key, value in context_dict.items():
+                results += value
+            if detailed:
+                return results
+            else:
+                return '\n\n'.join([r['metadata']['content'] for r in results])
+        else:
+            return self.get_document_outlines(files=additional_details["files"])
 
 class GenerationEngine:
     def __init__(self, llm_client: AzureOpenAIChatClient):
