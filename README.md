@@ -93,8 +93,6 @@ The system uses a sophisticated **two-phase decision process**:
 📝 User Query → 🤖 Query Analysis → 🎯 Strategy Selection → 🔍 Targeted Retrieval → 📊 Ranked Results
 ```
 
-##### Phase 1: Query Intent Analysis
-
 The system first analyzes your query to understand what you're really asking for and chooses between two retrieval strategies:
 
 | 🎯 **Strategy** | 📋 **Best For** | 🔍 **Trigger Phrases** |
