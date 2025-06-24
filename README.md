@@ -8,7 +8,7 @@
 
 Traditional document processing pipelines struggle with complex layouts, visual elements, and semantic understanding. The library combines **intelligent PDF parsing**, **AI-driven chunking**, and **advanced retrieval** to create a truly intelligent document processing system.
 
-### 🎯 Key Innovations
+### 🎯 Key Features 
 
 - **👁️ Visual Intelligence**: Detect signatures, diagrams, checkboxes, and other visual elements
 - **🧠 Agentic Chunking**: AI agents dynamically group related content with semantic understanding
