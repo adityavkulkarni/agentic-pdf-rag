@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Azure OpenAI](https://img.shields.io/badge/Azure-OpenAI-0078d4.svg)](https://azure.microsoft.com/en-us/products/cognitive-services/openai-service)
 
-> **A next-generation RAG pipeline that transforms any document into intelligent, queryable knowledge using AI-powered parsing, dual chunking strategies, and vector search.**
+> **A RAG pipeline that transforms any document into intelligent, queryable knowledge using AI-powered parsing, dual chunking strategies, and vector search.**
 
 Traditional document processing pipelines struggle with complex layouts, visual elements, and semantic understanding. The library combines **intelligent PDF parsing**, **AI-driven chunking**, and **advanced retrieval** to create a truly intelligent document processing system.
 
