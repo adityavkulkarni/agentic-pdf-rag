@@ -3,12 +3,6 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 
 
-# Custom Metadata
-class CustomMetadata(BaseModel):
-    contract_type: Optional[str] = Field(default_factory=str)
-    contract_id: Optional[str] = Field(default_factory=str)
-
-
 # Agentic Chunker
 class ChunkID(BaseModel):
     """Extracting the chunk id"""
@@ -42,6 +36,7 @@ class PDFParserResults(BaseModel):
     processed: bool = False
     file_name: str = ""
     parsed_pdf: ParsedPDF = Field(default_factory=ParsedPDF)
+    custom_metadata: Dict[Any, Any] = Field(default_factory=dict)
 
     def to_dict(self):
         result = self.model_dump()

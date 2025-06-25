@@ -51,7 +51,7 @@ class AgenticPDFParser:
         os.makedirs(self.output_directory, exist_ok=True)
         image_parser.group_index = 1
 
-    def parse_file(self, pdf_file, file_name=None):
+    def parse_file(self, pdf_file, file_name=None, custom_metadata=None):
         logger.info(f'Initializing AgenticPDFParser with file: {pdf_file}')
         self.pdf_path = pdf_file
         filename_with_extension = file_name if file_name else os.path.basename(pdf_file)
@@ -72,6 +72,8 @@ class AgenticPDFParser:
         os.makedirs(self.pages_dir, exist_ok=True)
         os.makedirs(self.processed_dir, exist_ok=True)
         os.makedirs(self.groups_dir, exist_ok=True)
+        if custom_metadata:
+            self.results.custom_metadata = custom_metadata
 
     def get_image_data(self):
         logger.info('Extracting image data')
@@ -197,8 +199,10 @@ class AgenticPDFParser:
         except Exception as e:
             logger.error(f"Exception: {e}")
 
-    def run_pipline(self, pdf_file, file_name=None, custom_extraction_prompt=None, custom_feature_model=None):
-        self.parse_file(pdf_file, file_name)
+    def run_pipline(self, pdf_file, file_name=None,
+                    custom_metadata=None, custom_extraction_prompt=None, custom_feature_model=None
+                    ):
+        self.parse_file(pdf_file, file_name, custom_metadata=custom_metadata)
         self.get_image_data()
         self.process_text()
         self.get_summary_and_ner()

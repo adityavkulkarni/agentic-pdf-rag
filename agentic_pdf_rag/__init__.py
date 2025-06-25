@@ -120,8 +120,8 @@ class RAGPipeline:
             api_version=self.config.openai_embedding_api_version
         )
 
-    def parse_pdf(self, pdf_path, filename=None):
-        self.parsed_pdf = self.pdf_parser.run_pipline(pdf_file=pdf_path, file_name=filename)
+    def parse_pdf(self, pdf_path, filename=None, custom_metadata=None):
+        self.parsed_pdf = self.pdf_parser.run_pipline(pdf_file=pdf_path, file_name=filename, custom_metadata=custom_metadata)
         return self.parsed_pdf
 
     def create_chunks(self, agentic_pdf_parser=None, agentic_chunker_context="", pdf_path=None, filename=None):

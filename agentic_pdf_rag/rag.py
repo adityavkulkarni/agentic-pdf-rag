@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class RetrievalEngine:
     def __init__(self, db_handler: DBHandler = None, llm_client=None):
+        self.metadata_filter = {}
         self.db_handler = db_handler if db_handler else DBHandler(
             dbname=config.db_name,
             user=config.db_user,
@@ -70,8 +71,17 @@ class RetrievalEngine:
             "similarity": r[2],
         } for r in semantic_response if r is not None]
 
+    def _filter_docs(self, metadata):
+        for key in self.metadata_filter:
+            if key in metadata and metadata[key] != self.metadata_filter[key]:
+                return False
+        return True
+
     def get_document_outlines(self, files=None):
-        docs = self.db_handler.get_documents()
+        docs = [
+            doc for doc in self.db_handler.get_documents()
+            if self._filter_docs(doc[1].get("custom_metadata", {}))
+        ]
         if files:
             return [
                     f"filename: {doc[0]} | "
@@ -93,6 +103,8 @@ class RetrievalEngine:
 
     def analyze_query(self, query):
         outlines = self.get_document_outlines()
+        if len(outlines) == 0:
+            return {"type": "no_context"}
         prompt = (
             "**Role**: Retrieval Strategy Analyst  \n"
             "**Task**: \n1.Determine the most efficient retrieval type for the user query:  \n"
@@ -160,7 +172,8 @@ class RetrievalEngine:
             reverse=True
         )[:top_k]
 
-    def get_context(self, query, top_k=5, detailed=False):
+    def get_context(self, query, top_k=5, metadata_filter={}, detailed=False):
+        self.metadata_filter = metadata_filter
         additional_details = self.analyze_query(query)
         logger.info(f"Query type: {additional_details.get('type')}")
         logger.info(f"Relevant files: {additional_details.get('files')}")
@@ -180,8 +193,10 @@ class RetrievalEngine:
                 return results
             else:
                 return '\n\n'.join([r['metadata']['content'] for r in results])
-        else:
+        elif additional_details.get("type") == "summary":
             return self.get_document_outlines(files=additional_details["files"])
+        else:
+            return None
 
 class GenerationEngine:
     def __init__(self, llm_client: AzureOpenAIChatClient):

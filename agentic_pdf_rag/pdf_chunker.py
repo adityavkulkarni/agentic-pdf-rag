@@ -126,5 +126,6 @@ class PDFChunker:
             sentences=[chunk["metadata"]["content"] for chunk in self.results.agentic_chunks],
             metadata={
                 chunk["metadata"]["content"]: chunk["metadata"] for chunk in self.results.agentic_chunks
-            })
+            }
+        )
         return self.results.to_dict()
