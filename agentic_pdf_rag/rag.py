@@ -73,7 +73,7 @@ class RetrievalEngine:
 
     def _filter_docs(self, metadata):
         for key in self.metadata_filter:
-            if key in metadata and metadata[key] != self.metadata_filter[key]:
+            if key not in metadata or metadata.get(key, "") != self.metadata_filter[key]:
                 return False
         return True
 
