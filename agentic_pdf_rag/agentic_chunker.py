@@ -2,10 +2,8 @@ import json
 import uuid
 import logging
 
-from typing import Optional
-from pydantic import BaseModel
-
 from .config_manager import config
+from .models import ChunkID
 from .openai_client import AzureOpenAIChatClient
 
 
@@ -286,13 +284,13 @@ class AgenticChunker:
     def _find_relevant_chunk(self, proposition):
         current_chunk_outline = self.get_chunk_outline()
 
-        # Pydantic data class
+        '''# Pydantic data class
         class ChunkID(BaseModel):
             """Extracting the chunk id"""
             chunk_id: Optional[str]
 
             class Config:
-                extra = "forbid"
+                extra = "forbid"'''
 
         prompt = [
             {

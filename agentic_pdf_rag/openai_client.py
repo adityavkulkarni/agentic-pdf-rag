@@ -84,29 +84,3 @@ class AzureOpenAIChatClient:
         embeddings = [item.embedding for item in response.data]
         # Map each phrase to its embedding
         return dict(zip(input_phrases, embeddings))
-
-"""class AzureOpenAIEmbeddings:
-    def __init__(self, endpoint: str, api_key: str, model: str, api_version: str|None = None):
-        self.client = AzureOpenAI(
-            api_version=api_version,
-            azure_endpoint=endpoint,
-            api_key=api_key
-        )
-        self.model = model
-
-    def create_embeddings(self, input_phrases: list[str]):
-        return self.client.embeddings.create(
-            input=input_phrases,
-            model=self.model
-        )
-
-    def create_embedding_dict(self, input_phrases: list[str]):
-        # Get the embeddings response
-        response = self.client.embeddings.create(
-            input=input_phrases,
-            model=self.model
-        )
-        # Extract the embeddings from the response
-        embeddings = [item.embedding for item in response.data]
-        # Map each phrase to its embedding
-        return dict(zip(input_phrases, embeddings))"""

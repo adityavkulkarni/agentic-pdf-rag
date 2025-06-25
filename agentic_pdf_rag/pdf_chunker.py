@@ -1,11 +1,9 @@
-import os
 import logging
 
-from pydantic import BaseModel, Field
-from typing import List, Any
 from langchain_experimental.text_splitter import SemanticChunker
 
 from .config_manager import config
+from .models import PDFChunkerResults
 from .agentic_pdf_parser import AgenticPDFParser
 from .agentic_chunker import AgenticChunker
 from .embeddings import OpenAIEmbeddings
@@ -14,7 +12,7 @@ from .openai_client import AzureOpenAIChatClient
 logger = logging.getLogger(__name__)
 
 
-class Results(BaseModel):
+'''class Results(BaseModel):
     semantic_chunks: List[Any] = Field(default_factory=list)
     agentic_chunks: List[Any] = Field(default_factory=list)
 
@@ -22,7 +20,7 @@ class Results(BaseModel):
         return {
             "semantic_chunks": self.semantic_chunks,
             "agentic_chunks": self.agentic_chunks,
-        }
+        }'''
 
 class PDFChunker:
     def __init__(self,
@@ -44,7 +42,7 @@ class PDFChunker:
         openai_embeddings_api_key = openai_embeddings_api_key or config.openai_embedding_api_key
         openai_embedding_model = openai_embedding_model or config.openai_embedding_model
 
-        self.results = Results()
+        self.results = PDFChunkerResults()
         self.agentic_pdf_parser = None
         self.llm_client = None
         self.agentic_chunker = None

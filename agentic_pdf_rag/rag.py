@@ -1,9 +1,8 @@
 import json
 import logging
 
-from pydantic import BaseModel, Field
-
 from .config_manager import config
+from .models import QueryType, SummaryResponse
 from .db_handler import DBHandler
 from .openai_client import AzureOpenAIChatClient
 
@@ -123,11 +122,11 @@ class RetrievalEngine:
             f"Document Outlines: {outlines}\n\n"
             f"User Query: {query}"
         )
-        class QueryType(BaseModel):
+        '''class QueryType(BaseModel):
             type: str = Field(..., description="Type of query: chunks or summary")
             files: str = Field(..., description="pipe separated list of filenames")
             class Config:
-                extra = "forbid"
+                extra = "forbid"'''
 
         llm_response = json.loads(
             self.llm_client.chat_completion(
@@ -148,11 +147,11 @@ class RetrievalEngine:
                 "**Document Outline**:\n"
                 f"{outlines}\n\n"
             )
-            class SummaryResponse(BaseModel):
+            '''class SummaryResponse(BaseModel):
                 files: str = Field(..., description="pipe separated list of filenames")
                 augmented_query: str = Field(..., description="augmented query")
                 class Config:
-                    extra = "forbid"
+                    extra = "forbid"'''
             llm_response = json.loads(
                 self.llm_client.chat_completion(
                     text=prompt, feature_model=SummaryResponse
