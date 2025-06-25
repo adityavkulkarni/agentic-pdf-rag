@@ -12,16 +12,6 @@ from .openai_client import AzureOpenAIChatClient
 logger = logging.getLogger(__name__)
 
 
-'''class Results(BaseModel):
-    semantic_chunks: List[Any] = Field(default_factory=list)
-    agentic_chunks: List[Any] = Field(default_factory=list)
-
-    def to_dict(self):
-        return {
-            "semantic_chunks": self.semantic_chunks,
-            "agentic_chunks": self.agentic_chunks,
-        }'''
-
 class PDFChunker:
     def __init__(self,
                  agentic_pdf_parser: AgenticPDFParser=None,

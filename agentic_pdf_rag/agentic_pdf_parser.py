@@ -20,36 +20,6 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-'''class ParsedPDF(BaseModel):
-    pages_ocr: List[Any] = Field(default_factory=list)
-    pages_llm: List[Any] = Field(default_factory=list)
-    pages_descriptions: List = Field(default_factory=list)
-    groups: Dict[Any, Any] = Field(default_factory=dict)
-    summary: str = ""
-    processed_images: Dict[Any, Any] = Field(default_factory=dict)
-    ner: List[Any] = Field(default_factory=list)
-    title: str = ""
-    identifier: str = ""
-    page_to_group_map: Dict[Any, Any] = Field(default_factory=dict)
-
-class ImageData(BaseModel):
-    pages: List[Any] = Field(default_factory=list)
-    processed: List[Any] = Field(default_factory=list)
-    processed_directory: str = ""
-    group_directory: str = ""
-    pages_directory: str = ""
-
-class Results(BaseModel):
-    processed: bool = False
-    file_name: str = ""
-    parsed_pdf: ParsedPDF = Field(default_factory=ParsedPDF)
-
-    def to_dict(self):
-        result = self.model_dump()
-        result['parsed_pdf'] = self.parsed_pdf.model_dump()
-        return result'''
-
-
 class AgenticPDFParser:
     def __init__(self,
                  model="gpt-4o-2024-08-06",
@@ -160,14 +130,6 @@ class AgenticPDFParser:
             "3. **Summarize and Create Description**\n"
             "   - Output: String with summary Description\n"
         )
-
-        '''class PageDescription(BaseModel):
-            summary: str = Field(..., description="The summary of the extraction.")
-            text_content: str = Field(..., description="Text present in image. Format it as paragraphs.")
-            visual_elements: str = Field(..., description="Additional non-textual features like diagrams, signatures etc.")
-            class Config:
-                extra = "forbid"'''
-
         llm_response = json.loads(
             self.llm_client.chat_completion(
                 text=prompt, image_base64=self._image_to_base64(image_path), feature_model=PageDescription
@@ -209,14 +171,6 @@ class AgenticPDFParser:
                 "document: \n"
                 f"{'\n'.join(self.results.parsed_pdf.pages_llm)}"
             )
-
-            '''class SummaryAndNER(BaseModel):
-                summary: str = Field(..., description="The summary of the extraction.")
-                ner: str = Field(..., description="The string containing named entities.")
-                title: str = Field(..., description="The title of the extraction.")
-                identifier: str = Field(..., description="The ID or number or any such element of the extraction.")
-                class Config:
-                    extra = "forbid"'''
             self.llm_response = json.loads(
                 self.llm_client.chat_completion(prompt, feature_model=SummaryAndNER).choices[0].message.content)
             logger.debug(f"LLM Response: {self.llm_response}")

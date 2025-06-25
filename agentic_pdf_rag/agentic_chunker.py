@@ -283,15 +283,6 @@ class AgenticChunker:
 
     def _find_relevant_chunk(self, proposition):
         current_chunk_outline = self.get_chunk_outline()
-
-        '''# Pydantic data class
-        class ChunkID(BaseModel):
-            """Extracting the chunk id"""
-            chunk_id: Optional[str]
-
-            class Config:
-                extra = "forbid"'''
-
         prompt = [
             {
             "role": "system",

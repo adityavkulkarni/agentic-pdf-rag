@@ -122,12 +122,6 @@ class RetrievalEngine:
             f"Document Outlines: {outlines}\n\n"
             f"User Query: {query}"
         )
-        '''class QueryType(BaseModel):
-            type: str = Field(..., description="Type of query: chunks or summary")
-            files: str = Field(..., description="pipe separated list of filenames")
-            class Config:
-                extra = "forbid"'''
-
         llm_response = json.loads(
             self.llm_client.chat_completion(
                 text=prompt, feature_model=QueryType
@@ -147,11 +141,6 @@ class RetrievalEngine:
                 "**Document Outline**:\n"
                 f"{outlines}\n\n"
             )
-            '''class SummaryResponse(BaseModel):
-                files: str = Field(..., description="pipe separated list of filenames")
-                augmented_query: str = Field(..., description="augmented query")
-                class Config:
-                    extra = "forbid"'''
             llm_response = json.loads(
                 self.llm_client.chat_completion(
                     text=prompt, feature_model=SummaryResponse
