@@ -132,7 +132,10 @@ class RAGServer:
     def get_context(self):
         request_data = request.get_json()
         query = request_data.get('query')
-        response = self.retriever.get_context(query=query)
+        response = self.retriever.get_context(query=query,
+                                              top_k=request_data.get("top_k", 5),
+                                              metadata_filter=request_data.get("metadata_filter", {}),
+                                              detailed=request_data.get("detailed", False))
         return jsonify({"context": response})
 
     def get_final_response(self):

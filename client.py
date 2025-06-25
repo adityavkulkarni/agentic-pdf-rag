@@ -70,9 +70,9 @@ class RAGClient:
         response = requests.post(f"{self.base_url}/get_document_by_name", json=payload)
         return response.json()
 
-    def get_context(self, query):
+    def get_context(self, query, top_k=5, metadata_filter={}, detailed=False):
         """Retrieve context for a query"""
-        payload = {"query": query}
+        payload = {"query": query, "top_k": top_k, "metadata_filter": metadata_filter, "detailed": detailed}
         response = requests.post(f"{self.base_url}/get_context", json=payload)
         return response.json()
 
