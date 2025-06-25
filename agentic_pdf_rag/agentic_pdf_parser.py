@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 from . import image_parser
 from .config_manager import config
-from models import PDFParserResults, ImageData, SummaryAndNER, PageDescription
+from .models import PDFParserResults, ImageData, SummaryAndNER, PageDescription
 from .openai_client import AzureOpenAIChatClient
 
 load_dotenv()
