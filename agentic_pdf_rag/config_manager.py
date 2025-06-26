@@ -70,7 +70,9 @@ class Config:
         except KeyError as e:
             logger.error(f"Missing 'database' section or key: {e}")
             raise
-        logger.info(f"Loaded config file: {'\n'.join([f'{k}: {v}' for k, v in self.to_dict().items()])}")
+        logger.info(f"Loaded config file:")
+        for key, value in self.to_dict().items():
+            logger.info(f"{key}: {value}")
 
     def to_dict(self):
         return {
