@@ -78,19 +78,24 @@ class RetrievalEngine:
         return True
 
     def get_document_outlines(self, files=None):
+        db_docs = self.db_handler.get_documents()
         docs = [
-            doc for doc in self.db_handler.get_documents()
+            doc for doc in db_docs
             if self._filter_docs(doc[1].get("custom_metadata", {}))
         ]
         if files:
+            db_docs = [doc for doc in db_docs if doc[0].strip() in files]
+            docs = [doc for doc in docs if doc[0].strip() in files]
+            logger.info(f"Found {len(db_docs)} documents; Filtered {len(db_docs) - len(docs)} documents")
             return [
                     f"filename: {doc[0]} | "
                     f"Summary: {doc[1]['parsed_pdf']['summary']} | "
                     f"Entities: {','.join(doc[1]['parsed_pdf']['ner'])} | "
                     f"Title: {doc[1]['parsed_pdf']['title']}"
-                    for doc in docs if doc[0] in files
+                    for doc in docs
                 ]
         else:
+            logger.info(f"Found {len(db_docs)} documents; Filtered {len(db_docs) - len(docs)} documents")
             return "\n".join(
                 [
                     f"filename: {doc[0]} | "
@@ -100,6 +105,12 @@ class RetrievalEngine:
                     for doc in docs
                 ]
             )
+
+    def get_document_content(self, files=None):
+        return {doc[0]: "\\n".join(doc[1]["parsed_pdf"]["pages_llm"])
+                for file in files
+                for doc in self.db_handler.get_documents(filename=file)
+        }
 
     def analyze_query(self, query):
         outlines = self.get_document_outlines()
@@ -140,7 +151,7 @@ class RetrievalEngine:
             ).choices[0].message.content
         )
         if llm_response["type"] == "summary":
-            llm_response["files"] = llm_response["files"].split("|")
+            llm_response["files"] = [file.strip() for file in llm_response["files"].split("|")]
         else:
             prompt = (
                 "You are a query optimization agent for a RAG system.\n"
@@ -158,7 +169,7 @@ class RetrievalEngine:
                     text=prompt, feature_model=SummaryResponse
                 ).choices[0].message.content
             )
-            llm_response["files"] = llm_response["files"].split("|")
+            llm_response["files"] = [file.strip() for file in llm_response["files"].split("|")]
             llm_response["type"] = "chunks"
         return llm_response
 
@@ -194,7 +205,13 @@ class RetrievalEngine:
             else:
                 return '\n\n'.join([r['metadata']['content'] for r in results])
         elif additional_details.get("type") == "summary":
-            return self.get_document_outlines(files=additional_details["files"])
+            context = (
+                "Document Outlines: \n"
+                f"{"\n".join(self.get_document_outlines(files=additional_details["files"]))}\n\n"
+                "Document Content: \n"
+                f"{json.dumps(self.get_document_content(files=additional_details["files"]))}"
+            )
+            return context
         else:
             return None
 
@@ -202,10 +219,10 @@ class GenerationEngine:
     def __init__(self, llm_client: AzureOpenAIChatClient):
         self.llm_client = llm_client
 
-    def generate_response(self, query, context, additional_instructions=None):
+    def generate_response(self, query, context, role=None, additional_instructions=None):
         additional_instructions = f"Additional Instructions: {additional_instructions}" if not additional_instructions else ""
         prompt = (
-            "You are an intelligent assistant.\n"
+            f"You are an intelligent assistant. {role if role else ""}\n"
             f"{additional_instructions}\n\n"
             "Context:\n"
             f"{context}\n\n"
@@ -213,7 +230,7 @@ class GenerationEngine:
             f"{query}\n\n"
             "Instructions:\n"
             "- Use the provided context to answer the user query as accurately and concisely as possible.\n"
-            "- If the context does not contain enough information, indicate what is missing and suggest next steps.\n"
+            "- Try to provide maximum information as possible.\n"
             "- Always follow any additional instructions specified above.\n"
             "- Format the response clearly. Use bullet points, tables, etc wherever necessary. Use markdown formatting.\n"
         )

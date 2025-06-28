@@ -164,6 +164,7 @@ class AgenticPDFParser:
             prompt = (
                 "Given the following document, please perform the following tasks:\n"
                 "- Summarize the main purpose and key points of the document."
+                " The summary should be in-depth and capture the complete information.\n"
                 "Summarize it so that it captures all the key information that may be used in retrieving "
                 "this document. Mention all the key entities, dates, locations and other specific information.\n"
                 "- Extract all named entities and return in a string with pipe separated named entities.\n"

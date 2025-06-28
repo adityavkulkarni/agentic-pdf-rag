@@ -210,16 +210,54 @@ class DBHandler(PostgreSQLVectorClient):
         )
 
     def batch_insert_embeddings(self, agentic_chunks, semantic_chunks):
+        # if type(agentic_chunks.get("embedding")) is dict:
+        records = []
+        for chunk in agentic_chunks:
+            for embedding in chunk["embedding"].values():
+                records.append({
+                "content": chunk["content"],
+                "embedding": embedding,
+                "filename": chunk["filename"],
+                "summary_embedding": chunk["summary_embedding"],
+                "metadata": chunk["metadata"]
+            })
         self._batch_insert_embeddings(
             table_name=self.agentic_embedding_table,
-            records=agentic_chunks,
+            records=records
         )
+        """else:
+            self._batch_insert_embeddings(
+                table_name=self.agentic_embedding_table,
+                records=agentic_chunks,
+            )"""
+        # if type(semantic_chunks.get("embedding")) is dict:
+        records = []
+        for chunk in semantic_chunks:
+            for embedding in chunk["embedding"].values():
+                records.append({
+                "content": chunk["content"],
+                "embedding": embedding,
+                "filename": chunk["filename"],
+                "summary_embedding": chunk["summary_embedding"],
+                "metadata": chunk["metadata"]
+            })
         self._batch_insert_embeddings(
             table_name=self.semantic_embedding_table,
-            records=semantic_chunks,
+            records=records
         )
+        """else:
+            self._batch_insert_embeddings(
+                table_name=self.semantic_embedding_table,
+                records=semantic_chunks,
+            )"""
 
-    def get_documents(self):
-        return self._fetch_documents(
-            table_name=self.document_table,
-        )
+    def get_documents(self, filename=None):
+        if filename:
+            return self._fetch_document(
+                table_name=self.document_table,
+                file_name=filename
+            )
+        else:
+            return self._fetch_documents(
+                table_name=self.document_table,
+            )

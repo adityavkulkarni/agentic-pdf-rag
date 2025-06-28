@@ -1,6 +1,7 @@
 import logging
 
 from langchain_experimental.text_splitter import SemanticChunker
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from .config_manager import config
 from .models import PDFChunkerResults
@@ -60,6 +61,11 @@ class PDFChunker:
             number_of_chunks=semantic_chunker_number_of_chunks,
             sentence_split_regex=semantic_chunker_sentence_split_regex
         )
+        self.splitter = RecursiveCharacterTextSplitter(
+            chunk_size=8092 * 2,  # chunk_size in characters
+            chunk_overlap=100,
+            length_function=len
+        )
 
     def add_parsed_pdf(self, agentic_pdf_parser: AgenticPDFParser, agentic_chunker_context=""):
         self.agentic_pdf_parser = agentic_pdf_parser
@@ -72,13 +78,20 @@ class PDFChunker:
                           len(x)]
         logger.info(f"Got {len(self.sentences)} sentences for chunking")
 
+    def _get_embeddings(self, chunk):
+        chunks_of_chunk = self.splitter.split_text(chunk)
+        return {
+            i: self.embedding_client.create_embedding_dict(input_phrases=[c])[c]
+            for i, c in enumerate(chunks_of_chunk)
+        }
+
     def get_semantic_chunks(self, sentences=None, embeddings=True, metadata={}):
         if sentences is None:
             sentences = self.sentences
         chunks = self.semantic_chunker.create_documents(sentences)
         chunks = [chunk.page_content for chunk in chunks]
         if embeddings:
-            embedding_dict = self.embedding_client.create_embedding_dict(input_phrases=chunks)
+            # embedding_dict = self.embedding_client.create_embedding_dict(input_phrases=chunks)
             for chunk  in chunks:
                 key = "None"
                 for key in metadata:
@@ -89,7 +102,7 @@ class PDFChunker:
                 document_summary = self.agentic_pdf_parser.results.parsed_pdf.summary
                 md = metadata.get(key, {"content": chunk})
                 self.results.semantic_chunks.append({
-                    "embedding": embedding_dict[chunk],
+                    "embedding": self._get_embeddings(chunk),
                     "metadata": md,
                     "content": chunk,
                     "document_summary": self.agentic_pdf_parser.results.parsed_pdf.summary,
@@ -105,16 +118,16 @@ class PDFChunker:
     def get_agentic_chunks(self, embeddings=True):
         self.agentic_chunker.add_propositions(self.sentences)
         chunks = self.agentic_chunker.get_chunks()
-        if embeddings:
-            embedding_dict = self.embedding_client.create_embedding_dict(input_phrases=[chunk["metadata"]["content"] for chunk in chunks])
-            for chunk in chunks:
-                chunk["embedding"] = embedding_dict[chunk["metadata"]["content"]]
-                chunk["content"] = chunk["metadata"]["content"]
-                chunk["filename"] = self.agentic_pdf_parser.results.file_name
-                chunk["document_summary"] = self.agentic_pdf_parser.results.parsed_pdf.summary
-                chunk["summary_embedding"] = self.embedding_client.create_embedding_dict(
-                    input_phrases=[self.agentic_pdf_parser.results.parsed_pdf.summary]
-                )[self.agentic_pdf_parser.results.parsed_pdf.summary]
+        for chunk in chunks:
+            if embeddings:
+                # embedding_dict = self.embedding_client.create_embedding_dict(input_phrases=[chunk["metadata"]["content"]])
+                chunk["embedding"] = self._get_embeddings(chunk["metadata"]["content"])
+            chunk["content"] = chunk["metadata"]["content"]
+            chunk["filename"] = self.agentic_pdf_parser.results.file_name
+            chunk["document_summary"] = self.agentic_pdf_parser.results.parsed_pdf.summary
+            chunk["summary_embedding"] = self.embedding_client.create_embedding_dict(
+                input_phrases=[self.agentic_pdf_parser.results.parsed_pdf.summary]
+            )[self.agentic_pdf_parser.results.parsed_pdf.summary]
         self.results.agentic_chunks.extend(chunks)
         logger.info(f"Created {len(self.results.agentic_chunks)} agentic chunks")
 
