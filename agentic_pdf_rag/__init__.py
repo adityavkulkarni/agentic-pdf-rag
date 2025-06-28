@@ -139,8 +139,13 @@ class RAGPipeline:
             semantic_chunks=chunks["semantic_chunks"]
         )
 
-    def add_document_to_knowledge(self, pdf_path, filename=None, agentic_chunker_context=""):
-        self.parse_pdf(pdf_path, filename)
+    def add_document_to_knowledge(self,
+                                  pdf_path,
+                                  filename=None,
+                                  custom_metadata=None,
+                                  agentic_chunker_context="",
+                                  ):
+        self.parse_pdf(pdf_path=pdf_path, filename=filename, custom_metadata=custom_metadata)
         self.create_chunks(agentic_pdf_parser=self.pdf_parser, agentic_chunker_context=agentic_chunker_context)
         self.add_document_to_db(parsed_pdf=self.parsed_pdf, chunks=self.chunks)
 

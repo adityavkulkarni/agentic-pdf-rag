@@ -162,6 +162,17 @@ class PostgreSQLVectorClient:
         logger.info(f"Fetched {len(results)} documents from {table_name}")
         return results
 
+    def _delete_document(self, table_name, file_name):
+        """Find similar vectors using cosine similarity"""
+        search_query = f"""
+            DELETE FROM {table_name}
+            WHERE filename LIKE '%{file_name}%'
+        """
+        self.cur.execute(search_query)
+        results = self.cur.fetchall()
+        logger.info(f"Deleted {file_name} from {table_name}")
+        return results
+
     def _close(self):
         self.cur.close()
         self.conn.close()
@@ -200,14 +211,27 @@ class DBHandler(PostgreSQLVectorClient):
             model=model or config_manager.config.openai_embedding_model
         )
 
-    def insert_document(self, document):
-        self._insert_document(
-            table_name=self.document_table,
-            filename=document["file_name"],
-            data=document,
-            summary_embedding=self.embedding_client.create_embedding_dict([document["parsed_pdf"]["summary"]])[
-                document["parsed_pdf"]["summary"]],
-        )
+    def insert_document(self, document, overwrite=False):
+        if len(self._fetch_document(self.document_table, file_name=document["file_name"])) == 0:
+            self._insert_document(
+                table_name=self.document_table,
+                filename=document["file_name"],
+                data=document,
+                summary_embedding=self.embedding_client.create_embedding_dict([document["parsed_pdf"]["summary"]])[
+                    document["parsed_pdf"]["summary"]],
+            )
+        elif overwrite:
+            logger.info(f"Document {document['file_name']} already exists! Reinsert the chunks.")
+            self._delete_document(table_name=self.document_table, file_name=document["file_name"])
+            self._delete_document(table_name=self.agentic_embedding_table, file_name=document["file_name"])
+            self._delete_document(table_name=self.semantic_embedding_table, file_name=document["file_name"])
+            self._insert_document(
+                table_name=self.document_table,
+                filename=document["file_name"],
+                data=document,
+                summary_embedding=self.embedding_client.create_embedding_dict([document["parsed_pdf"]["summary"]])[
+                    document["parsed_pdf"]["summary"]],
+            )
 
     def batch_insert_embeddings(self, agentic_chunks, semantic_chunks):
         # if type(agentic_chunks.get("embedding")) is dict:
