@@ -91,6 +91,13 @@ class SummaryResponse(BaseModel):
         extra = "forbid"
 
 class ContextType(BaseModel):
-    context_type: str = Field(..., description="document/page")
+    context_type: str = Field(..., description="document/page/hybrid")
+    class Config:
+        extra = "forbid"
+
+class MultiModalResponse(BaseModel):
+    summary: str = Field(..., description="Summary of the response")
+    response: str = Field(..., description="Response of the query")
+    markdown: str = Field(..., description="Markdown formatted response (optional)")
     class Config:
         extra = "forbid"

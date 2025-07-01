@@ -129,9 +129,9 @@ class AgenticPDFParser:
             "     * **Visual Elements**: Diagrams/charts with type classification and caption linking\n"
             "     * **Special Fields**: Checkboxes (checked/unchecked), stamps, handwritten marginalia\n"
             "   - Output: JSON structure with element metadata and cross-references to text sections\n\n"
-            "3. **Summarize and Create Description**\n"
+            "3. **Summarize and Create Description - only for this page based on its contents**\n"
             "   - Output: String with summary Description\n"
-            "4. **Create a meaningful title"
+            "4. **Create a meaningful title - only for this page based on its contents**\n"
         )
         llm_response = json.loads(
             self.llm_client.chat_completion(

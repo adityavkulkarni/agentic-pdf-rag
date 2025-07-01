@@ -2,7 +2,7 @@ import json
 import logging
 
 from .config_manager import config
-from .models import QueryType, SummaryResponse, ContextType
+from .models import QueryType, SummaryResponse, ContextType, MultiModalResponse
 from .db_handler import DBHandler
 from .openai_client import AzureOpenAIChatClient
 
@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class RetrievalEngine:
     def __init__(self, db_handler: DBHandler = None, llm_client=None):
+        self.page_sources = None
         self.pages = None
         self.custom_fields = None
         self.sources = None
@@ -200,11 +201,11 @@ class RetrievalEngine:
             "You are a query optimization agent for a RAG system.\n"
             "Your task is to transform the user's analysis query into a detailed, "
             "multifaceted query that maximizes retrieval of all relevant document chunks.\n"
-            "Use the document outlines to add additional context to the query to enhance retrieval.\n"
+            "Use the page outlines to add additional context to the query to enhance retrieval.\n"
             "Identify all relevant filenames for the user's query.\n"
             "**User Query**:\n"
             f"{query}\n\n"
-            "**Document Outline**:\n"
+            "**Page Outline**:\n"
             f"{"\n".join(outlines)}\n\n"
         )
         llm_response = json.loads(
@@ -213,7 +214,21 @@ class RetrievalEngine:
             ).choices[0].message.content
         )
         llm_response["files"] = [file.strip() for file in llm_response["files"].split("|")]
+        logging.info(f"Relevant pages: {llm_response['files']}")
         llm_response["type"] = "pages"
+        self.page_sources = {file.split("_page")[0]: [] for file in llm_response["files"]}
+        for page in self.pages:
+            if (
+                    len([x for x in llm_response["files"] if f"{page["filename"]}_" in x]) ==
+                    len([x for x in self.pages if page["filename"] == x["filename"]])
+            ):
+                self.sources["documents"].append(page["filename"])
+                continue
+            if (
+                    page["filename"] in self.page_sources and
+                    f"{page["filename"]}_page{page["page_no"]}" in llm_response["files"]
+            ):
+                self.page_sources[page["filename"]].append(page["page_no"])
         return [
             f"text_content: {page["text_content"]}\nvisual_elements: {page["visual_elements"]}"
             for page in self.pages
@@ -226,8 +241,9 @@ class RetrievalEngine:
             "You are a context analyzer agent for a RAG system.\n"
             "Your task is to identify the best context for the user query.\n, "
             "Compare Document Context and Page Context to identify which is more suitable to answer the query.\n"
+            "If extremely unsure then reply with hybrid(as a last option)."
             "Do not use outside knowledge.\n"
-            "Return only: document or page depending on which is better."
+            "Return only: document or page or hybrid depending on which is better."
             "**User Query**:\n"
             f"{query}\n\n"
             "**Document Context**:\n"
@@ -241,7 +257,18 @@ class RetrievalEngine:
             ).choices[0].message.content
         )
         logging.info(f"Using {llm_response["context_type"]} level context")
-        return page_response if llm_response["context_type"] == "page" else context
+        self.sources["documents"] = list(set(self.sources["documents"]))
+        if llm_response["context_type"] == "pages":
+            context = page_response
+            self.sources = self.page_sources
+        elif llm_response["context_type"] == "document":
+            context = llm_response
+        else:
+            context = f"Page level context: {page_response}\n\n Document: {llm_response}"
+            self.page_sources["documents"] = [doc for doc in self.sources["documents"] if doc not in self.page_sources.keys()]
+            self.sources = self.page_sources
+        logging.info(f"Sources: {self.sources}")
+        return context
 
     def get_context(self, query, top_k=5, metadata_filter={}, detailed=False):
         self.metadata_filter = metadata_filter
@@ -252,6 +279,7 @@ class RetrievalEngine:
             {doc[0]: doc[1].get("custom_extraction_llm_response", {})}
             for doc in  self.db_handler.get_documents() if doc[0] in additional_details.get("files")
         ]
+        self.sources = {"documents": additional_details["files"]}
         page_context = self.get_page_level_context(query)
         doc_context = None
         if additional_details.get("type") == "chunks":
@@ -264,7 +292,6 @@ class RetrievalEngine:
             for file in additional_details["files"]:
                 context_dict[file] = self._query_context(query_embeddings, a_query_embeddings, top_k=top_k, files=[file])
             results = []
-            self.sources = additional_details["files"]
             for key, value in context_dict.items():
                 results += value
             if detailed:
@@ -272,7 +299,6 @@ class RetrievalEngine:
             else:
                 doc_context =  '\n\n'.join([r['metadata']['content'] for r in results])
         elif additional_details.get("type") == "summary":
-            self.sources = additional_details["files"]
             doc_context = (
                 "Document Outlines: \n"
                 f"{"\n".join(self.get_document_outlines(files=additional_details["files"]))}\n\n"
@@ -286,8 +312,12 @@ class GenerationEngine:
     def __init__(self, llm_client: AzureOpenAIChatClient):
         self.llm_client = llm_client
 
-    def generate_response(self, query, context, role=None, additional_instructions=None):
+    def generate_response(self, query, context, role=None, additional_instructions=None, structured=True):
         additional_instructions = f"Additional Instructions: {additional_instructions}" if not additional_instructions else ""
+        structure_instructions = ("- Summarize the response and output it in summary field\n"
+                                  "- Response should be in the response field"
+                                  "- If there is any content that can be use markdown, output it in the markdown field\n"
+                                  if structured else "")
         prompt = (
             f"You are an intelligent assistant. {role if role else ""}\n"
             f"{additional_instructions}\n\n"
@@ -300,5 +330,9 @@ class GenerationEngine:
             "- Try to provide maximum information as possible.\n"
             "- Always follow any additional instructions specified above.\n"
             "- Format the response clearly. Use bullet points, tables, etc wherever necessary. Use markdown formatting.\n"
+        ) + structure_instructions
+        return json.loads(
+            self.llm_client.chat_completion(
+                text=prompt, feature_model=MultiModalResponse
+            ).choices[0].message.content
         )
-        return self.llm_client.chat_completion(text=prompt).choices[0].message.content

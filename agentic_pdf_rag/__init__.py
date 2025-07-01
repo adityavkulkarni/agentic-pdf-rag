@@ -46,7 +46,7 @@ class RAGPipeline:
                         min_chunk_size=min_chunk_size)
             if init else None
         )
-        self.db_handler = self.get_db_handler() if init else None
+        self.db_handler = self.get_db_handler(create_tables=True) if init else None
         self.openai_client = self.get_openai_client() if init else None
         self.openai_embeddings_client = self.get_openai_embeddings_client() if init else None
         self.retrieval_engine = self.get_retrieval_engine(db_handler=self.db_handler) if init else None
@@ -85,13 +85,14 @@ class RAGPipeline:
                           agentic_chunker_context = agentic_chunker_context
                           )
 
-    def get_db_handler(self):
+    def get_db_handler(self, create_tables=False):
         return DBHandler(
             dbname=self.config.db_name,
             user=self.config.db_user,
             password=self.config.db_password,
             host=self.config.db_host,
             port=self.config.db_port,
+            create_tables=create_tables
         )
 
     def get_retrieval_engine(self, db_handler=None):

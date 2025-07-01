@@ -52,7 +52,6 @@ class PostgreSQLVectorClient:
             self.conn.rollback()
             raise
 
-
     def _create_embedding_table(self, table_name, vector_dim=3072):
         """Create table with vector column"""
         try:
@@ -164,14 +163,12 @@ class PostgreSQLVectorClient:
 
     def _delete_document(self, table_name, file_name):
         """Find similar vectors using cosine similarity"""
-        search_query = f"""
+        query = f"""
             DELETE FROM {table_name}
             WHERE filename LIKE '%{file_name}%'
         """
-        self.cur.execute(search_query)
-        results = self.cur.fetchall()
+        self.cur.execute(query)
         logger.info(f"Deleted {file_name} from {table_name}")
-        return results
 
     def _close(self):
         self.cur.close()
@@ -188,7 +185,8 @@ class DBHandler(PostgreSQLVectorClient):
                  endpoint=None,
                  api_key=None,
                  model=None,
-                 api_version=None
+                 api_version=None,
+                 create_tables=False,
                  ):
         super().__init__(
             dbname=dbname,
@@ -198,11 +196,14 @@ class DBHandler(PostgreSQLVectorClient):
             port=port,
         )
         self.document_table = "documents"
+        self.page_table = "pages"
         self.agentic_embedding_table = "agentic_embedding"
         self.semantic_embedding_table = "semantic_embedding"
-        self._create_document_table(table_name=self.document_table)
-        self._create_embedding_table(table_name=self.agentic_embedding_table)
-        self._create_embedding_table(table_name=self.semantic_embedding_table)
+        if create_tables:
+            self._create_document_table(table_name=self.document_table)
+            self._create_document_table(table_name=self.page_table)
+            self._create_embedding_table(table_name=self.agentic_embedding_table)
+            self._create_embedding_table(table_name=self.semantic_embedding_table)
 
         self.embedding_client = AzureOpenAIChatClient(
             api_endpoint=endpoint or config_manager.config.openai_embedding_endpoint,
@@ -212,25 +213,25 @@ class DBHandler(PostgreSQLVectorClient):
         )
 
     def insert_document(self, document, overwrite=False):
-        if len(self._fetch_document(self.document_table, file_name=document["file_name"])) == 0:
-            self._insert_document(
-                table_name=self.document_table,
-                filename=document["file_name"],
-                data=document,
-                summary_embedding=self.embedding_client.create_embedding_dict([document["parsed_pdf"]["summary"]])[
-                    document["parsed_pdf"]["summary"]],
-            )
-        elif overwrite:
+        if overwrite:
             logger.info(f"Document {document['file_name']} already exists! Reinsert the chunks.")
             self._delete_document(table_name=self.document_table, file_name=document["file_name"])
+            self._delete_document(table_name=self.page_table, file_name=document["file_name"])
             self._delete_document(table_name=self.agentic_embedding_table, file_name=document["file_name"])
             self._delete_document(table_name=self.semantic_embedding_table, file_name=document["file_name"])
+        self._insert_document(
+            table_name=self.document_table,
+            filename=document["file_name"],
+            data=document,
+            summary_embedding=self.embedding_client.create_embedding_dict([document["parsed_pdf"]["summary"]])[
+                document["parsed_pdf"]["summary"]],
+        )
+        for i, page in enumerate(document["parsed_pdf"]["pages_descriptions"]):
             self._insert_document(
-                table_name=self.document_table,
-                filename=document["file_name"],
-                data=document,
-                summary_embedding=self.embedding_client.create_embedding_dict([document["parsed_pdf"]["summary"]])[
-                    document["parsed_pdf"]["summary"]],
+                table_name=self.page_table,
+                filename=f"{document["file_name"].split(".")[0]}_page{i+1}",
+                data=page,
+                summary_embedding=self.embedding_client.create_embedding_dict([page["summary"]])[page["summary"]]
             )
 
     def batch_insert_embeddings(self, agentic_chunks, semantic_chunks):
@@ -285,3 +286,25 @@ class DBHandler(PostgreSQLVectorClient):
             return self._fetch_documents(
                 table_name=self.document_table,
             )
+
+    def get_pages(self, filename=None):
+        if filename:
+            pages =  self._fetch_document(
+                table_name=self.page_table,
+                file_name=filename
+            )
+        else:
+            pages =  self._fetch_documents(
+                table_name=self.page_table,
+            )
+        return [
+            {
+                "filename": f"{page[0].split("_page")[0]}.pdf",
+                "page_no": int(page[0].split("_page")[1]),
+                "title": page[1]["title"],
+                "summary": page[1]["summary"],
+                "text_content": page[1]["text_content"],
+                "visual_elements": page[1]["visual_elements"]
+            }
+            for page in pages
+        ]
