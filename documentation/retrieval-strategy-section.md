@@ -1,177 +1,141 @@
-## 🎯 Intelligent Retrieval Strategy & Agentic Workflow
+## 🎯 Intelligent Retrieval Strategy
 
-### 🧠 How the System Decides What to Retrieve
+The **RetrievalEngine** uses an advanced, agentic approach to analyze your query and retrieve the most relevant information—whether you need high-level insights or specific details. The system is built around two main retrieval branches: **page-level context** and **document-level context** (chunks or summary).
 
-The **RetrievalEngine** doesn't just blindly search for information—it intelligently analyzes your query to determine the most effective retrieval strategy. This agentic approach ensures you get precisely the right information, whether you need high-level insights or specific details.
+### How the System Decides What to Retrieve
 
-#### 🔍 The Decision Framework
-
-The system uses a sophisticated **two-phase decision process**:
-
+The system follows a **multi-phase decision process** to ensure you get the right information, tailored to your needs.
 ```
 📝 User Query → 🤖 Query Analysis → 🎯 Strategy Selection → 🔍 Targeted Retrieval → 📊 Ranked Results
 ```
+```text
+graph TD
+    A[Start: Process Query] --> B[Call get_page_level_context]
+    B --> C[Execute get_pages method]
+    C --> D[Generate Page Outlines]
+    D --> E[Construct LLM Prompt]
+    E --> F[Get LLM Response]
+    F --> G[Parse & Process Response]
+    G --> H[Filter Relevant Pages]
+    H --> I[Return page_context]
 
-##### Phase 1: Query Intent Analysis
+    A --> J[Check additional_details type]
+    J -->|Type = 'chunks'| K[Chunks Processing]
+    J -->|Type = 'summary'| L[Summary Processing]
 
-The system first analyzes your query to understand what you're really asking for:
+    subgraph Page-Level Context
+        B --> C
+        C --> D
+        D --> E
+        E --> F
+        F --> G
+        G --> H
+        H --> I
+    end
 
-```python
-def analyze_query(self, query):
-    """
-    Determine the most efficient retrieval type:
-    - 'summary': Document-level understanding 
-    - 'chunks': Specific content extraction
-    """
-    # AI-powered analysis determines strategy...
+    subgraph Doc-Level Context: Chunks
+        K --> M[Create Query Embeddings]
+        M --> N[Create Augmented Query Embeddings]
+        N --> O[Process Each File]
+        O --> P[Call _query_context]
+        P --> Q[Combine Results]
+        Q --> R[Format doc_context]
+    end
+
+    subgraph Doc-Level Context: Summary
+        L --> S[Set Sources]
+        S --> T[Get Document Outlines]
+        T --> U[Get Document Content]
+        U --> V[Format doc_context]
+    end
+
+    I --> W[Final Context Processing]
+    R --> W
+    V --> W
+    W --> X[Call evaluate_context]
+    X --> Y[End]
+
 ```
 
-##### Phase 2: Strategy Selection
+Depending on your query, the system activates one or both of the following workflows:
 
-Based on the analysis, the system chooses between two retrieval strategies:
+### 1. Page-Level Context Workflow
+
+**When you need information from specific pages across documents:**
+
+1. **Extract Pages & Outlines:**  
+   - The system processes PDF inputs and extracts pages, along with their summaries and metadata.
+2. **User Query Analysis:**  
+   - Your query is analyzed to understand which pages are relevant.
+3. **LLM Query Optimization:**  
+   - The system uses a language model to optimize your query, using document outlines for context.
+4. **Filter Relevant Pages:**  
+   - Only the pages that match the optimized query are selected.
+5. **Return Page Context:**  
+   - The system returns the text and visual elements from those pages.
+
+**Example Use Case:**  
+> "What does the contract say about termination on page 7 of contract.pdf?"
+
+### 2. Document-Level Context Workflow
+
+**When you need either high-level insights or detailed extraction:**
+
+The system chooses between two strategies based on your query:
 
 | 🎯 **Strategy** | 📋 **Best For** | 🔍 **Trigger Phrases** |
-|----------------|------------------|-------------------------|
-| **`summary`** | High-level understanding, comparisons, trends | "Compare", "Summarize", "Overview", "What are the key..." |
-| **`chunks`** | Specific facts, exact quotes, detailed extraction | "Extract", "Show specific", "Exact value", "In [file] on page..." |
+|-----------------|------------------|-------------------------|
+| **`summary`**   | High-level understanding, comparisons, trends | "Compare", "Summarize", "Overview", "What are the key..." |
+| **`chunks`**    | Specific facts, exact quotes, detailed extraction | "Extract", "Show specific", "Exact value", "In [file] on page..." |
 
----
-
-### 🚀 Agentic Workflow Deep Dive
-
-#### 🎯 Summary Strategy Workflow
+#### Summary Strategy Workflow
 
 When your query requires **high-level understanding**:
 
-```python
-# Example: "Compare the risk factors across all documents"
+Example: "Compare the risk factors across all documents"
+```
 query_analysis = {
-    "type": "summary",
-    "files": ["doc1.pdf", "doc2.pdf", "doc3.pdf"],
-    "reasoning": "Requires synthesis across multiple documents"
+"type": "summary",
+"files": ["doc1.pdf", "doc2.pdf", "doc3.pdf"],
+"reasoning": "Requires synthesis across multiple documents"
 }
 
-# Returns document summaries with key insights
+Returns document summaries with key insights
 context = self.get_document_outlines(files=analysis["files"])
 ```
 
 **Perfect for:**
-- 📊 **Cross-document analysis**: "Compare strategies across all files"
-- 🔍 **Trend identification**: "What are the emerging themes?"
-- 📈 **Performance overviews**: "Summarize quarterly results"
-- 🎯 **Strategic insights**: "What are the key recommendations?"
+- **Cross-document analysis:** "Compare strategies across all files"
+- **Trend identification:** "What are the emerging themes?"
+- **Performance overviews:** "Summarize quarterly results"
+- **Strategic insights:** "What are the key recommendations?"
 
-#### 🔎 Chunks Strategy Workflow
+#### Chunks Strategy Workflow
 
 When your query needs **specific, detailed information**:
 
-```python
-# Example: "What was the exact Q3 revenue figure?"
-query_analysis = {
-    "type": "chunks",
-    "files": ["financial_report.pdf"],
-    "augmented_query": "Q3 revenue figures financial results quarterly earnings"
+Example: "What was the exact Q3 revenue figure?"
+```query_analysis = {
+"type": "chunks",
+"files": ["financial_report.pdf"],
+"augmented_query": "Q3 revenue figures financial results quarterly earnings"
 }
 
-# Multi-layered retrieval process
+Multi-layered retrieval process
 context = self._query_context(
-    query_embeddings=original_query_embedding,
-    a_query_embeddings=augmented_query_embedding,
-    files=relevant_files
+query_embeddings=original_query_embedding,
+a_query_embeddings=augmented_query_embedding,
+files=relevant_files
 )
 ```
 
 **Perfect for:**
-- 💰 **Specific numbers**: "What was the Q3 sales figure?"
-- 📜 **Exact quotes**: "Copy the paragraph about compliance"
-- 📍 **Location-specific data**: "From section 3.2 on page 14"
-- ⚖️ **Precise terms**: "Show the exact warranty conditions"
+- **Specific numbers:** "What was the Q3 sales figure?"
+- **Exact quotes:** "Copy the paragraph about compliance"
+- **Location-specific data:** "From section 3.2 on page 14"
+- **Precise terms:** "Show the exact warranty conditions"
 
----
+### Combining Context for Comprehensive Results
 
-### 🎭 The Agentic Advantage
-
-#### 🤖 Smart Query Augmentation
-
-The system doesn't just use your exact query—it **intelligently expands** it for better results:
-
-```python
-# Your query: "Sales data"
-# System thinking: "This is too vague, let me enhance it..."
-
-augmented_query = "Q4 2023 sales figures revenue performance quarterly earnings EMEA region"
-# Now retrieves much more relevant content!
-```
-
-#### 🧩 Multi-Strategy Hybrid Search
-
-For chunk-based queries, the system uses **4 different search methods** simultaneously:
-
-```python
-def _query_context(self, query_embeddings, a_query_embeddings, top_k=5, files=None):
-    return sorted(
-        self.get_similar_chunks(query_embeddings, files=files) +           # Direct semantic match
-        self.get_similar_chunk_by_summary(query_embeddings, files=files) + # Summary-based match  
-        self.get_similar_chunks(a_query_embeddings, files=files) +         # Augmented query match
-        self.get_similar_chunk_by_summary(a_query_embeddings, files=files), # Augmented summary match
-        key=lambda x: x["similarity"], reverse=True
-    )[:top_k]
-```
-
-This **hybrid approach** ensures you never miss relevant information, whether it's:
-- 🎯 **Directly mentioned** in your query
-- 🔍 **Semantically related** to your intent  
-- 📝 **Summarized** in document overviews
-- 🚀 **Enhanced** through query augmentation
-
-#### 📊 File-Specific Intelligence
-
-The system analyzes document outlines to **automatically identify** which files are relevant:
-
-```python
-# Document Analysis Pipeline
-outlines = self.get_document_outlines()
-# "filename: contract.pdf | Summary: Service agreement with payment terms | 
-#  Entities: Company A, Company B, payment, obligations | Title: Service Contract"
-
-relevant_files = ai_analysis(query, outlines)
-# Automatically selects only the files that contain relevant information
-```
-
----
-
-### 🛠️ Configuration & Customization
-
-#### 🎛️ Fine-Tune Retrieval Behavior
-
-```python
-# Customize chunk retrieval
-retriever = RetrievalEngine()
-
-# Adjust similarity thresholds
-chunks = retriever.get_similar_chunks(
-    query_embeddings, 
-    files=["specific_doc.pdf"],
-    top_k=10  # Get more results
-)
-
-# Control summary vs chunks behavior
-detailed_context = retriever.get_context(
-    query="Your query here",
-    detailed=True  # Returns full chunk objects with metadata
-)
-```
-
----
-
-### 🎯 Best Practices
-
-#### ✅ **For Summary Queries:**
-- Use comparison keywords: "compare", "analyze", "overview"
-- Ask about trends, patterns, or high-level insights  
-- Don't specify exact page numbers or specific details
-
-#### ✅ **For Chunk Queries:**
-- Be specific about what you want: "exact figure", "specific clause"
-- Use location indicators: "in section X", "on page Y"
-- Ask for verbatim content or precise data points
+The **RetrievalEngine** can combine both **page-level** and **document-level** context to provide you with the most comprehensive answer possible.  
+For example, if your query requires both specific page details and a summary of trends, the system will automatically merge the relevant information.
