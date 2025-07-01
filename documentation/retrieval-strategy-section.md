@@ -8,54 +8,6 @@ The system follows a **multi-phase decision process** to ensure you get the righ
 ```
 📝 User Query → 🤖 Query Analysis → 🎯 Strategy Selection → 🔍 Targeted Retrieval → 📊 Ranked Results
 ```
-```text
-graph TD
-    A[Start: Process Query] --> B[Call get_page_level_context]
-    B --> C[Execute get_pages method]
-    C --> D[Generate Page Outlines]
-    D --> E[Construct LLM Prompt]
-    E --> F[Get LLM Response]
-    F --> G[Parse & Process Response]
-    G --> H[Filter Relevant Pages]
-    H --> I[Return page_context]
-
-    A --> J[Check additional_details type]
-    J -->|Type = 'chunks'| K[Chunks Processing]
-    J -->|Type = 'summary'| L[Summary Processing]
-
-    subgraph Page-Level Context
-        B --> C
-        C --> D
-        D --> E
-        E --> F
-        F --> G
-        G --> H
-        H --> I
-    end
-
-    subgraph Doc-Level Context: Chunks
-        K --> M[Create Query Embeddings]
-        M --> N[Create Augmented Query Embeddings]
-        N --> O[Process Each File]
-        O --> P[Call _query_context]
-        P --> Q[Combine Results]
-        Q --> R[Format doc_context]
-    end
-
-    subgraph Doc-Level Context: Summary
-        L --> S[Set Sources]
-        S --> T[Get Document Outlines]
-        T --> U[Get Document Content]
-        U --> V[Format doc_context]
-    end
-
-    I --> W[Final Context Processing]
-    R --> W
-    V --> W
-    W --> X[Call evaluate_context]
-    X --> Y[End]
-
-```
 
 Depending on your query, the system activates one or both of the following workflows:
 
@@ -139,3 +91,33 @@ files=relevant_files
 
 The **RetrievalEngine** can combine both **page-level** and **document-level** context to provide you with the most comprehensive answer possible.  
 For example, if your query requires both specific page details and a summary of trends, the system will automatically merge the relevant information.
+
+
+```text
+graph TD
+    A[User Query] --> B[Get Relevant Files from DB]
+    B --> C1[Page-Level Branch]
+    B --> C2[Doc-Level Branch]
+    
+    subgraph Page-Level Branch
+        C1 --> D1[Get Pages from DB]
+        D1 --> E1[Select Relevant Pages]
+        E1 --> F1[Return page_context]
+    end
+    
+    subgraph Doc-Level Branch
+        C2 --> D2{Determine Type}
+        D2 -->|Chunks| E2[Get Augmented Query]
+        D2 -->|Summary| F2[Get File Outlines]
+        E2 --> G2[Fetch Chunks via Multi-Strategy Search]
+        G2 --> H2[Generate doc_context]
+        F2 --> I2[Generate doc_context]
+    end
+    
+    F1 --> J[Compare & Evaluate]
+    H2 --> J
+    I2 --> J
+    J --> K[Return Best Matching Context]
+
+
+```
