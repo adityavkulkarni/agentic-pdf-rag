@@ -2,7 +2,7 @@ import json
 import logging
 
 from .config_manager import config
-from .models import QueryType, SummaryResponse
+from .models import QueryType, SummaryResponse, ContextType
 from .db_handler import DBHandler
 from .openai_client import AzureOpenAIChatClient
 
@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 class RetrievalEngine:
     def __init__(self, db_handler: DBHandler = None, llm_client=None):
+        self.pages = None
+        self.custom_fields = None
+        self.sources = None
         self.metadata_filter = {}
         self.db_handler = db_handler if db_handler else DBHandler(
             dbname=config.db_name,
@@ -59,6 +62,10 @@ class RetrievalEngine:
         } for r in semantic_response if r is not None],
             key=lambda x: x["similarity"],
             reverse=True)[:5]
+
+    def get_pages(self):
+        self.pages = self.db_handler.get_pages()
+        return self.pages
 
     def get_similar_document(self, query_embeddings, top_k=5):
         semantic_response = self.db_handler.similarity_search_document(
@@ -183,11 +190,70 @@ class RetrievalEngine:
             reverse=True
         )[:top_k]
 
+    def get_page_level_context(self, query):
+        self.get_pages()
+        outlines = [
+            f"Filename: {page["filename"]}_page{page["page_no"]} | Summary: {page["summary"]}"
+            for page in self.pages
+        ]
+        prompt = (
+            "You are a query optimization agent for a RAG system.\n"
+            "Your task is to transform the user's analysis query into a detailed, "
+            "multifaceted query that maximizes retrieval of all relevant document chunks.\n"
+            "Use the document outlines to add additional context to the query to enhance retrieval.\n"
+            "Identify all relevant filenames for the user's query.\n"
+            "**User Query**:\n"
+            f"{query}\n\n"
+            "**Document Outline**:\n"
+            f"{"\n".join(outlines)}\n\n"
+        )
+        llm_response = json.loads(
+            self.llm_client.chat_completion(
+                text=prompt, feature_model=SummaryResponse
+            ).choices[0].message.content
+        )
+        llm_response["files"] = [file.strip() for file in llm_response["files"].split("|")]
+        llm_response["type"] = "pages"
+        return [
+            f"text_content: {page["text_content"]}\nvisual_elements: {page["visual_elements"]}"
+            for page in self.pages
+            if f"{page["filename"]}_page{page["page_no"]}" in llm_response["files"]
+        ]
+        # return llm_response
+
+    def evaluate_context(self, query, context, page_response):
+        prompt = (
+            "You are a context analyzer agent for a RAG system.\n"
+            "Your task is to identify the best context for the user query.\n, "
+            "Compare Document Context and Page Context to identify which is more suitable to answer the query.\n"
+            "Do not use outside knowledge.\n"
+            "Return only: document or page depending on which is better."
+            "**User Query**:\n"
+            f"{query}\n\n"
+            "**Document Context**:\n"
+            f"{context}\n\n"
+            "**Page Context**:\n"
+            f"{page_response}\n\n"
+        )
+        llm_response = json.loads(
+            self.llm_client.chat_completion(
+                text=prompt, feature_model=ContextType
+            ).choices[0].message.content
+        )
+        logging.info(f"Using {llm_response["context_type"]} level context")
+        return page_response if llm_response["context_type"] == "page" else context
+
     def get_context(self, query, top_k=5, metadata_filter={}, detailed=False):
         self.metadata_filter = metadata_filter
         additional_details = self.analyze_query(query)
         logger.info(f"Query type: {additional_details.get('type')}")
         logger.info(f"Relevant files: {additional_details.get('files')}")
+        self.custom_fields = [
+            {doc[0]: doc[1].get("custom_extraction_llm_response", {})}
+            for doc in  self.db_handler.get_documents() if doc[0] in additional_details.get("files")
+        ]
+        page_context = self.get_page_level_context(query)
+        doc_context = None
         if additional_details.get("type") == "chunks":
             query_embeddings = self.db_handler.embedding_client.create_embedding_dict([query])[query]
             a_query_embeddings = self.db_handler.embedding_client.create_embedding_dict(
@@ -198,22 +264,23 @@ class RetrievalEngine:
             for file in additional_details["files"]:
                 context_dict[file] = self._query_context(query_embeddings, a_query_embeddings, top_k=top_k, files=[file])
             results = []
+            self.sources = additional_details["files"]
             for key, value in context_dict.items():
                 results += value
             if detailed:
-                return results
+                doc_context =  results
             else:
-                return '\n\n'.join([r['metadata']['content'] for r in results])
+                doc_context =  '\n\n'.join([r['metadata']['content'] for r in results])
         elif additional_details.get("type") == "summary":
-            context = (
+            self.sources = additional_details["files"]
+            doc_context = (
                 "Document Outlines: \n"
                 f"{"\n".join(self.get_document_outlines(files=additional_details["files"]))}\n\n"
                 "Document Content: \n"
                 f"{json.dumps(self.get_document_content(files=additional_details["files"]))}"
             )
-            return context
-        else:
-            return None
+            # return context
+        return self.evaluate_context(query, doc_context, page_context)
 
 class GenerationEngine:
     def __init__(self, llm_client: AzureOpenAIChatClient):

@@ -116,7 +116,7 @@ class AgenticPDFParser:
     def _get_page_content(self, image_path):
         logger.info(f'LLM for summary and feature extraction for page: {image_path}')
         prompt = (
-            "Analyze the provided document/image and perform these tasks in sequence:\n"
+            "Analyze the provided page /image and perform these tasks in sequence:\n"
             "1. **Text Extraction & Structure Reconstruction**\n"
             "   - Extract ALL text elements using AI vision models for poor-quality sections\n"
             "   - Preserve original:\n"
@@ -131,6 +131,7 @@ class AgenticPDFParser:
             "   - Output: JSON structure with element metadata and cross-references to text sections\n\n"
             "3. **Summarize and Create Description**\n"
             "   - Output: String with summary Description\n"
+            "4. **Create a meaningful title"
         )
         llm_response = json.loads(
             self.llm_client.chat_completion(
@@ -196,6 +197,7 @@ class AgenticPDFParser:
                 ).choices[0].message.content
             )
             logger.debug(f"LLM Response: {self.custom_extraction_llm_response}")
+            self.results.custom_extraction_llm_response = self.custom_extraction_llm_response
             return self.custom_extraction_llm_response
         except Exception as e:
             logger.error(f"Exception: {e}")

@@ -81,18 +81,40 @@ Traditional document processing pipelines struggle with complex layouts, visual 
 
 ## 🎯 Intelligent Retrieval Strategy
 
+The **RetrievalEngine** uses an advanced, agentic approach to analyze your query and retrieve the most relevant information—whether you need high-level insights or specific details. The system is built around two main retrieval branches: **page-level context** and **document-level context** (chunks or summary).
+
 ### How the System Decides What to Retrieve
 
-The **RetrievalEngine** doesn't just blindly search for information—it intelligently analyzes your query to determine the most effective retrieval strategy. This agentic approach ensures you get precisely the right information, whether you need high-level insights or specific details.
+The system follows a **multi-phase decision process** to ensure you get the right information, tailored to your needs.
 
-#### The Decision Framework
+The **RetrievalEngine** can combine both **page-level** and **document-level** context to provide you with the most comprehensive answer possible.  
+For example, if your query requires both specific page details and a summary of trends, the system will automatically merge the relevant information.
 
-The system uses a sophisticated **two-phase decision process**:
+Depending on your query, the system activates one or both of the following workflows:
+
+### 1. Page-Level Context Workflow
+
+**When you need information from specific pages across documents:**
+
+1. **Extract Pages & Outlines:**  
+   - The system processes PDF inputs and extracts pages, along with their summaries and metadata.
+2. **User Query Analysis:**  
+   - Your query is analyzed to understand which pages are relevant.
+3. **LLM Query Optimization:**  
+   - The system uses a language model to optimize your query, using document outlines for context.
+4. **Filter Relevant Pages:**  
+   - Only the pages that match the optimized query are selected.
+5. **Return Page Context:**  
+   - The system returns the text and visual elements from those pages.
+
+**Example Use Case:**  
+> "What does the contract say about termination on page 7 of contract.pdf?"
+
+### 2. Document-Level Context Workflow
 
 ```
 📝 User Query → 🤖 Query Analysis → 🎯 Strategy Selection → 🔍 Targeted Retrieval → 📊 Ranked Results
 ```
-
 The system first analyzes your query to understand what you're really asking for and chooses between two retrieval strategies:
 
 | 🎯 **Strategy** | 📋 **Best For** | 🔍 **Trigger Phrases** |

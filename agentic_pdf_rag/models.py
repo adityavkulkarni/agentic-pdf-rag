@@ -37,6 +37,7 @@ class PDFParserResults(BaseModel):
     file_name: str = ""
     parsed_pdf: ParsedPDF = Field(default_factory=ParsedPDF)
     custom_metadata: Dict[Any, Any] = Field(default_factory=dict)
+    custom_extraction_llm_response: Dict[Any, Any] = Field(default_factory=dict)
 
     def to_dict(self):
         result = self.model_dump()
@@ -45,6 +46,7 @@ class PDFParserResults(BaseModel):
 
 
 class PageDescription(BaseModel):
+    title: str = Field(..., description="The title of the extraction.")
     summary: str = Field(..., description="The summary of the extraction.")
     text_content: str = Field(..., description="Text present in image. Format it as paragraphs.")
     visual_elements: str = Field(..., description="Additional non-textual features like diagrams, signatures etc.")
@@ -85,6 +87,10 @@ class QueryType(BaseModel):
 class SummaryResponse(BaseModel):
     files: str = Field(..., description="pipe separated list of filenames")
     augmented_query: str = Field(..., description="augmented query")
+    class Config:
+        extra = "forbid"
 
+class ContextType(BaseModel):
+    context_type: str = Field(..., description="document/page")
     class Config:
         extra = "forbid"
