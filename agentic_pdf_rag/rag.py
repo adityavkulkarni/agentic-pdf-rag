@@ -30,9 +30,13 @@ class RetrievalEngine:
             api_version=config.openai_api_version,
         )
 
-    def get_similar_chunks(self, query_embeddings, files=None):
+    def get_similar_chunks(self, query_embeddings, docling=False, files=None):
+        if docling:
+            semantic_embedding_table = self.db_handler.docling_semantic_embedding_table
+        else:
+            semantic_embedding_table = self.db_handler.semantic_embedding_table
         semantic_response = self.db_handler.similarity_search_chunks(
-            table_name=self.db_handler.semantic_embedding_table,
+            table_name=semantic_embedding_table,
             query_embedding=query_embeddings,
             embedding_column="embedding",
             top_k=5,
@@ -47,9 +51,13 @@ class RetrievalEngine:
             key=lambda x: x["similarity"],
             reverse=True)[:5]
 
-    def get_similar_chunk_by_summary(self, query_embeddings, top_k=5, files=None):
+    def get_similar_chunk_by_summary(self, query_embeddings, top_k=5, docling=False, files=None):
+        if docling:
+            semantic_embedding_table = self.db_handler.docling_semantic_embedding_table
+        else:
+            semantic_embedding_table = self.db_handler.semantic_embedding_table
         semantic_response = self.db_handler.similarity_search_chunks(
-            table_name=self.db_handler.semantic_embedding_table,
+            table_name=semantic_embedding_table,
             query_embedding=query_embeddings,
             embedding_column="summary_embedding",
             top_k=top_k,
@@ -96,12 +104,12 @@ class RetrievalEngine:
             docs = [doc for doc in docs if doc[0].strip() in files]
             logger.info(f"Found {len(db_docs)} documents; Filtered {len(db_docs) - len(docs)} documents")
             return [
-                    f"filename: {doc[0]} | "
-                    f"Summary: {doc[1]['parsed_pdf']['summary']} | "
-                    f"Entities: {','.join(doc[1]['parsed_pdf']['ner'])} | "
-                    f"Title: {doc[1]['parsed_pdf']['title']}"
-                    for doc in docs
-                ]
+                f"filename: {doc[0]} | "
+                f"Summary: {doc[1]['parsed_pdf']['summary']} | "
+                f"Entities: {','.join(doc[1]['parsed_pdf']['ner'])} | "
+                f"Title: {doc[1]['parsed_pdf']['title']}"
+                for doc in docs
+            ]
         else:
             logger.info(f"Found {len(db_docs)} documents; Filtered {len(db_docs) - len(docs)} documents")
             return "\n".join(
@@ -118,7 +126,7 @@ class RetrievalEngine:
         return {doc[0]: "\\n".join(doc[1]["parsed_pdf"]["pages_llm"])
                 for file in files
                 for doc in self.db_handler.get_documents(filename=file)
-        }
+                }
 
     def analyze_query(self, query):
         outlines = self.get_document_outlines()
@@ -186,7 +194,11 @@ class RetrievalEngine:
             self.get_similar_chunks(query_embeddings, files=files) +
             self.get_similar_chunk_by_summary(query_embeddings, files=files) +
             self.get_similar_chunks(a_query_embeddings, files=files) +
-            self.get_similar_chunk_by_summary(a_query_embeddings, files=files),
+            self.get_similar_chunk_by_summary(a_query_embeddings, files=files) +
+            self.get_similar_chunks(query_embeddings, files=files, docling=True) +
+            self.get_similar_chunk_by_summary(query_embeddings, files=files, docling=True) +
+            self.get_similar_chunks(a_query_embeddings, files=files, docling=True) +
+            self.get_similar_chunk_by_summary(a_query_embeddings, files=files, docling=True),
             key=lambda x: x["similarity"],
             reverse=True
         )[:top_k]
@@ -229,6 +241,8 @@ class RetrievalEngine:
                     f"{page["filename"]}_page{page["page_no"]}" in llm_response["files"]
             ):
                 self.page_sources[page["filename"]].append(page["page_no"])
+        for key in self.page_sources:
+            self.page_sources[key] = list(set(self.page_sources[key]))
         return [
             f"text_content: {page["text_content"]}\nvisual_elements: {page["visual_elements"]}"
             for page in self.pages
@@ -257,7 +271,8 @@ class RetrievalEngine:
             ).choices[0].message.content
         )
         logging.info(f"Using {llm_response["context_type"]} level context")
-        self.sources["documents"] = list(set(self.sources["documents"]))
+        for key in self.sources:
+            self.sources[key] = list(set(self.sources[key]))
         if llm_response["context_type"] == "pages":
             context = page_response
             self.sources = self.page_sources
@@ -265,7 +280,8 @@ class RetrievalEngine:
             context = llm_response
         else:
             context = f"Page level context: {page_response}\n\n Document: {llm_response}"
-            self.page_sources["documents"] = [doc for doc in self.sources["documents"] if doc not in self.page_sources.keys()]
+            self.page_sources["documents"] = [doc for doc in self.sources["documents"] if
+                                              doc not in self.page_sources.keys()]
             self.sources = self.page_sources
         logging.info(f"Sources: {self.sources}")
         return context
@@ -277,7 +293,7 @@ class RetrievalEngine:
         logger.info(f"Relevant files: {additional_details.get('files')}")
         self.custom_fields = [
             {doc[0]: doc[1].get("custom_extraction_llm_response", {})}
-            for doc in  self.db_handler.get_documents() if doc[0] in additional_details.get("files")
+            for doc in self.db_handler.get_documents() if doc[0] in additional_details.get("files")
         ]
         self.sources = {"documents": additional_details["files"]}
         page_context = self.get_page_level_context(query)
@@ -290,14 +306,15 @@ class RetrievalEngine:
             logger.info(f"Augmented query: {additional_details.get('augmented_query')}")
             context_dict = {}
             for file in additional_details["files"]:
-                context_dict[file] = self._query_context(query_embeddings, a_query_embeddings, top_k=top_k, files=[file])
+                context_dict[file] = self._query_context(query_embeddings, a_query_embeddings, top_k=top_k,
+                                                         files=[file])
             results = []
             for key, value in context_dict.items():
                 results += value
             if detailed:
-                doc_context =  results
+                doc_context = results
             else:
-                doc_context =  '\n\n'.join([r['metadata']['content'] for r in results])
+                doc_context = '\n\n'.join([r['metadata']['content'] for r in results])
         elif additional_details.get("type") == "summary":
             doc_context = (
                 "Document Outlines: \n"
@@ -308,31 +325,71 @@ class RetrievalEngine:
             # return context
         return self.evaluate_context(query, doc_context, page_context)
 
+
 class GenerationEngine:
     def __init__(self, llm_client: AzureOpenAIChatClient):
         self.llm_client = llm_client
 
-    def generate_response(self, query, context, role=None, additional_instructions=None, structured=True):
+    def generate_response(self, query, context, role=None, additional_instructions=None, attachment=None,
+                          structured=True):
         additional_instructions = f"Additional Instructions: {additional_instructions}" if not additional_instructions else ""
         structure_instructions = ("- Summarize the response and output it in summary field\n"
                                   "- Response should be in the response field"
                                   "- If there is any content that can be use markdown, output it in the markdown field\n"
                                   if structured else "")
         prompt = (
-            f"You are an intelligent assistant. {role if role else ""}\n"
-            f"{additional_instructions}\n\n"
-            "Context:\n"
-            f"{context}\n\n"
-            "User Query:\n"
-            f"{query}\n\n"
-            "Instructions:\n"
-            "- Use the provided context to answer the user query as accurately and concisely as possible.\n"
-            "- Try to provide maximum information as possible.\n"
-            "- Always follow any additional instructions specified above.\n"
-            "- Format the response clearly. Use bullet points, tables, etc wherever necessary. Use markdown formatting.\n"
-        ) + structure_instructions
+                     f"You are an intelligent assistant. {role if role else ""}\n"
+                     f"{additional_instructions}\n\n"
+                     "Context:\n"
+                     f"{context}\n\n"
+                     "User Query:\n"
+                     f"{query}\n\n"
+                     "Instructions:\n"
+                     "- Use the provided context to answer the user query as accurately and concisely as possible.\n"
+                     "- Try to provide maximum information as possible.\n"
+                     "- Always follow any additional instructions specified above.\n"
+                     "- Format the response clearly. Use bullet points, tables, etc wherever necessary. Use markdown formatting.\n"
+                 ) + structure_instructions
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                        "You are an intelligent assistant. "
+                        + (role if role else "")
+                        + "\n" + additional_instructions)
+            },
+            {
+                "role": "user",
+                "content": "User Query:\n" + query
+            },
+            {
+                "role": "system",
+                "content": "Context:\n" + context
+            },
+            {
+                "role": "system",
+                "content": (
+                        "Instructions:\n"
+                        "- Use the provided context to answer the user query as accurately and concisely as possible.\n"
+                        "- Use the attachment if necessary and clearly mention if the attachment is used.\n"
+                        "- Clearly mention which part of response is according to the context and which is according to attachment.\n"
+                        "- Try to provide maximum information as possible.\n"
+                        "- Always follow any additional instructions specified above.\n"
+                        "- Format the response clearly. Use bullet points, tables, etc wherever necessary. Use markdown formatting.\n"
+                        + structure_instructions
+                )
+            }
+        ]
+        if attachment:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": "Attachment contents:\n" + attachment
+                }
+            )
         return json.loads(
             self.llm_client.chat_completion(
-                text=prompt, feature_model=MultiModalResponse
+                text=messages, feature_model=MultiModalResponse
             ).choices[0].message.content
         )

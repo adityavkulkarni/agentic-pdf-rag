@@ -23,6 +23,7 @@ class ParsedPDF(BaseModel):
     ner: List[Any] = Field(default_factory=list)
     title: str = ""
     identifier: str = ""
+    docling_content: str = ""
     page_to_group_map: Dict[Any, Any] = Field(default_factory=dict)
 
 class ImageData(BaseModel):

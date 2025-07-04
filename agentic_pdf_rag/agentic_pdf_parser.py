@@ -7,6 +7,7 @@ import shutil
 
 import pdf2image
 import pytesseract
+import requests
 
 from PIL import Image
 from dotenv import load_dotenv
@@ -27,6 +28,7 @@ class AgenticPDFParser:
                  openai_api_key=None,
                  openai_api_version=None,
                  output_directory="pdf_images",
+                 docling_url=None
                  ):
         self.results = PDFParserResults()
         self.image_data= ImageData()
@@ -42,6 +44,7 @@ class AgenticPDFParser:
         self.custom_extraction_llm_response = None
 
         self.output_directory = output_directory
+        self.docling_url = docling_url
         self.llm_client = AzureOpenAIChatClient(
             model=model or config.agentic_pdf_parser_model,
             api_key=openai_api_key or config.openai_api_key,
@@ -141,15 +144,36 @@ class AgenticPDFParser:
         logger.debug(f"LLM Response: {llm_response}")
         return llm_response
 
-    def process_text(self):
-        if self.groups_dir:
-            for file in [f for f in sorted(os.listdir(self.groups_dir)) if
-                         os.path.isfile(os.path.join(self.groups_dir, f))]:
-                filename_with_extension = os.path.basename(os.path.join(self.groups_dir, file))
-                filename, _ = os.path.splitext(filename_with_extension)
-                self.results.parsed_pdf.groups[filename] = self._get_ocr_text(os.path.join(self.groups_dir, file))
+    @staticmethod
+    def read_pdf_as_base64(pdf_path):
+        with open(pdf_path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+
+    def process_pdf_docling(self):
+        pdf_b64 = self.read_pdf_as_base64(self.pdf_path)
+        payload = {"pdf": pdf_b64}
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(self.docling_url, data=json.dumps(payload), headers=headers)
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            logger.info(f"HTTP error: {e}")
+            print(f"Response: {response.text}")
+            return ""
+        return response.json()
+
+    def process_text(self, ocr=False, use_docling=True):
+        if ocr:
+            if self.groups_dir:
+                for file in [f for f in sorted(os.listdir(self.groups_dir)) if
+                             os.path.isfile(os.path.join(self.groups_dir, f))]:
+                    filename_with_extension = os.path.basename(os.path.join(self.groups_dir, file))
+                    filename, _ = os.path.splitext(filename_with_extension)
+                    self.results.parsed_pdf.groups[filename] = self._get_ocr_text(os.path.join(self.groups_dir, file))
             self.results.parsed_pdf.groups = dict(sorted(self.results.parsed_pdf.groups.items()))
-        self.results.parsed_pdf.pages_ocr = [self._get_ocr_text(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
+            self.results.parsed_pdf.pages_ocr = [self._get_ocr_text(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
+        if use_docling:
+            self.results.parsed_pdf.docling_content = self.process_pdf_docling()["content"]["markdown"]
         self.results.parsed_pdf.pages_descriptions = [self._get_page_content(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
         self.results.parsed_pdf.pages_llm = [
             f"{page['text_content']} \n\n Visual information: {page['visual_elements']}"

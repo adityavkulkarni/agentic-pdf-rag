@@ -199,12 +199,15 @@ class DBHandler(PostgreSQLVectorClient):
         self.page_table = "pages"
         self.agentic_embedding_table = "agentic_embedding"
         self.semantic_embedding_table = "semantic_embedding"
+        self.docling_agentic_embedding_table = "docling_agentic_embedding"
+        self.docling_semantic_embedding_table = "docling_semantic_embedding"
         if create_tables:
             self._create_document_table(table_name=self.document_table)
             self._create_document_table(table_name=self.page_table)
             self._create_embedding_table(table_name=self.agentic_embedding_table)
             self._create_embedding_table(table_name=self.semantic_embedding_table)
-
+            self._create_embedding_table(table_name=self.docling_agentic_embedding_table)
+            self._create_embedding_table(table_name=self.docling_semantic_embedding_table)
         self.embedding_client = AzureOpenAIChatClient(
             api_endpoint=endpoint or config_manager.config.openai_embedding_endpoint,
             api_key=api_key or config_manager.config.openai_embedding_api_key,
@@ -234,8 +237,14 @@ class DBHandler(PostgreSQLVectorClient):
                 summary_embedding=self.embedding_client.create_embedding_dict([page["summary"]])[page["summary"]]
             )
 
-    def batch_insert_embeddings(self, agentic_chunks, semantic_chunks):
+    def batch_insert_embeddings(self, agentic_chunks, semantic_chunks, docling=False):
         # if type(agentic_chunks.get("embedding")) is dict:
+        if docling:
+            agentic_embedding_table = self.docling_agentic_embedding_table
+            semantic_embedding_table = self.docling_semantic_embedding_table
+        else:
+            agentic_embedding_table = self.agentic_embedding_table
+            semantic_embedding_table = self.semantic_embedding_table
         records = []
         for chunk in agentic_chunks:
             for embedding in chunk["embedding"].values():
@@ -247,7 +256,7 @@ class DBHandler(PostgreSQLVectorClient):
                 "metadata": chunk["metadata"]
             })
         self._batch_insert_embeddings(
-            table_name=self.agentic_embedding_table,
+            table_name=agentic_embedding_table,
             records=records
         )
         """else:
@@ -267,7 +276,7 @@ class DBHandler(PostgreSQLVectorClient):
                 "metadata": chunk["metadata"]
             })
         self._batch_insert_embeddings(
-            table_name=self.semantic_embedding_table,
+            table_name=semantic_embedding_table,
             records=records
         )
         """else:

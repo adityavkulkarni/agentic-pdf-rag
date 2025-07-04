@@ -16,6 +16,7 @@ __all__ = [
     "RAGPipeline"
 ]
 
+
 class RAGPipeline:
     def __init__(self,
                  config_file=None,
@@ -32,18 +33,19 @@ class RAGPipeline:
                  ):
         if config_file is None:
             config_file = os.path.join(os.getcwd(), "config", "config.ini")
-        self.config = config_manager.Config(config_file=config_file, openai_api_key=openai_api_key, openai_embeddings_api_key=openai_embeddings_api_key)
+        self.config = config_manager.Config(config_file=config_file, openai_api_key=openai_api_key,
+                                            openai_embeddings_api_key=openai_embeddings_api_key)
         config_manager.config = self.config
         self.pdf_parser = self.get_agentic_pdf_parser() if init else None
         self.pdf_chunker = (
             self.get_pdf_chunker(agentic_pdf_parser=None,
-                        custom_embedding_model=custom_embedding_model,
-                        agentic_chunker_context=agentic_chunker_context,
-                        buffer_size=buffer_size,
-                        breakpoint_threshold_type=breakpoint_threshold_type,
-                        number_of_chunks=number_of_chunks,
-                        sentence_split_regex=sentence_split_regex,
-                        min_chunk_size=min_chunk_size)
+                                 custom_embedding_model=custom_embedding_model,
+                                 agentic_chunker_context=agentic_chunker_context,
+                                 buffer_size=buffer_size,
+                                 breakpoint_threshold_type=breakpoint_threshold_type,
+                                 number_of_chunks=number_of_chunks,
+                                 sentence_split_regex=sentence_split_regex,
+                                 min_chunk_size=min_chunk_size)
             if init else None
         )
         self.db_handler = self.get_db_handler(create_tables=True) if init else None
@@ -54,11 +56,12 @@ class RAGPipeline:
 
     def get_agentic_pdf_parser(self):
         return AgenticPDFParser(
-                 model=self.config.agentic_pdf_parser_model,
-                 openai_endpoint=self.config.openai_endpoint,
-                 openai_api_key=self.config.openai_api_key,
-                 openai_api_version=self.config.openai_api_version,
-                 output_directory=self.config.output_directory
+            model=self.config.agentic_pdf_parser_model,
+            openai_endpoint=self.config.openai_endpoint,
+            openai_api_key=self.config.openai_api_key,
+            openai_api_version=self.config.openai_api_version,
+            output_directory=self.config.output_directory,
+            docling_url=self.config.docling_url,
         )
 
     def get_pdf_chunker(self,
@@ -74,15 +77,15 @@ class RAGPipeline:
         return PDFChunker(agentic_pdf_parser=agentic_pdf_parser,
                           openai_embedding_model=self.config.openai_embedding_model,
                           custom_embedding_model=custom_embedding_model,
-                          openai_embeddings_endpoint = self.config.openai_embedding_endpoint,
-                          openai_embeddings_api_key = self.config.openai_embedding_api_key,
-                          openai_embeddings_api_version = self.config.openai_embedding_api_version,
-                          semantic_chunker_buffer_size = buffer_size,
-                          semantic_chunker_breakpoint_threshold_type = breakpoint_threshold_type,
+                          openai_embeddings_endpoint=self.config.openai_embedding_endpoint,
+                          openai_embeddings_api_key=self.config.openai_embedding_api_key,
+                          openai_embeddings_api_version=self.config.openai_embedding_api_version,
+                          semantic_chunker_buffer_size=buffer_size,
+                          semantic_chunker_breakpoint_threshold_type=breakpoint_threshold_type,
                           semantic_chunker_sentence_split_regex=sentence_split_regex,
                           semantic_chunker_min_chunk_size=min_chunk_size,
                           semantic_chunker_number_of_chunks=number_of_chunks,
-                          agentic_chunker_context = agentic_chunker_context
+                          agentic_chunker_context=agentic_chunker_context
                           )
 
     def get_db_handler(self, create_tables=False):
@@ -122,13 +125,15 @@ class RAGPipeline:
         )
 
     def parse_pdf(self, pdf_path, filename=None, custom_metadata=None):
-        self.parsed_pdf = self.pdf_parser.run_pipline(pdf_file=pdf_path, file_name=filename, custom_metadata=custom_metadata)
+        self.parsed_pdf = self.pdf_parser.run_pipline(pdf_file=pdf_path, file_name=filename,
+                                                      custom_metadata=custom_metadata)
         return self.parsed_pdf
 
     def create_chunks(self, agentic_pdf_parser=None, agentic_chunker_context="", pdf_path=None, filename=None):
-        if agentic_pdf_parser is None and  self.parsed_pdf is None:
+        if agentic_pdf_parser is None and self.parsed_pdf is None:
             self.parse_pdf(pdf_path, filename)
-        self.chunks = self.pdf_chunker.run_pipline(agentic_pdf_parser=self.pdf_parser, agentic_chunker_context=agentic_chunker_context)
+        self.chunks = self.pdf_chunker.run_pipline(agentic_pdf_parser=self.pdf_parser,
+                                                   agentic_chunker_context=agentic_chunker_context)
         return self.chunks
 
     def add_document_to_db(self, parsed_pdf=None, chunks=None):
@@ -154,7 +159,7 @@ class RAGPipeline:
         context = self.retrieval_engine.get_context(query=query)
         return context
 
-    def generate_response(self, query, context="",additional_instructions=""):
+    def generate_response(self, query, context="", additional_instructions=""):
         response = self.generator.generate_response(
             query=query,
             context=context,

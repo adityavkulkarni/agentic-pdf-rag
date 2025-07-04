@@ -38,6 +38,7 @@ class PDFChunker:
         self.llm_client = None
         self.agentic_chunker = None
         self.sentences = []
+        self.sentences_docling = []
         self.embedding_client = AzureOpenAIChatClient(
             api_endpoint=openai_embeddings_endpoint,
             api_key=openai_embeddings_api_key,
@@ -76,7 +77,14 @@ class PDFChunker:
         )
         self.sentences = [x for x in "\n\n".join(self.agentic_pdf_parser.results.parsed_pdf.pages_llm).split("\n\n") if
                           len(x)]
+        if len(self.agentic_pdf_parser.results.parsed_pdf.docling_content):
+            self.sentences_docling = [
+                x for x in self.agentic_pdf_parser.results.parsed_pdf.docling_content.split("\n\n")
+                if len(x)
+            ]
         logger.info(f"Got {len(self.sentences)} sentences for chunking")
+        if len(self.sentences_docling):
+            logger.info(f"Got {len(self.sentences_docling)} sentences from docling for chunking")
 
     def _get_embeddings(self, chunk):
         chunks_of_chunk = self.splitter.split_text(chunk)
@@ -115,8 +123,10 @@ class PDFChunker:
         logger.info(f"Created {len(self.results.semantic_chunks)} semantic chunks")
         return self.results.semantic_chunks
 
-    def get_agentic_chunks(self, embeddings=True):
-        self.agentic_chunker.add_propositions(self.sentences)
+    def get_agentic_chunks(self, sentences=None, embeddings=True):
+        if sentences is None:
+            sentences = self.sentences
+        self.agentic_chunker.add_propositions(sentences)
         chunks = self.agentic_chunker.get_chunks()
         for chunk in chunks:
             if embeddings:

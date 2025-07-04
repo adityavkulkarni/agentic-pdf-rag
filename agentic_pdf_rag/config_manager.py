@@ -70,6 +70,13 @@ class Config:
         except KeyError as e:
             logger.error(f"Missing 'database' section or key: {e}")
             raise
+
+        try:
+            docling = config['docling']
+            self.docling_url = docling.get('docling_url')
+        except KeyError as e:
+            logger.error(f"Missing 'docling' section or key: {e}")
+
         logger.info(f"Loaded config file:")
         for key, value in self.to_dict().items():
             logger.info(f"{key}: {value}")
@@ -91,6 +98,7 @@ class Config:
             "db_password": "<REDACTED>",
             "db_host": self.db_host,
             "db_port": self.db_port,
+            "docling_url": self.docling_url,
         }
 
     def set_config(self, config):
@@ -126,5 +134,7 @@ class Config:
             self.db_host = config["host"]
         if "port" in config:
             self.db_port = config["port"]
+        if "docling_url" in config:
+            self.docling_url = config["docling_url"]
 
 config = Config()

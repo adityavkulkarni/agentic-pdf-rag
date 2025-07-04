@@ -44,6 +44,7 @@ class RAGServer:
         self.app.add_url_rule('/get_document_by_name', view_func=self.get_document_by_name, methods=['POST'])
         self.app.add_url_rule('/get_context', view_func=self.get_context, methods=['POST'])
         self.app.add_url_rule('/get_final_response', view_func=self.get_final_response, methods=['POST'])
+        self.app.add_url_rule('/get_chat_response', view_func=self.get_chat_response, methods=['POST'])
 
     def get_config(self):
         return jsonify({
@@ -146,6 +147,15 @@ class RAGServer:
             additional_instructions=request_data.get('additional_instructions')
         )
         return jsonify(response)
+
+    def get_chat_response(self):
+        request_data = request.get_json()
+        client = self.rag_pipeline.get_openai_client()
+        return jsonify(client.chat_completion(
+            text=request_data.get('prompt'),
+            # feature_model=create_model(request_data["feature_model"]) if request_data.get("feature_model") else None,
+            temperature=request_data.get("temperature", 0),
+        ).choices[0].message.content)
 
     def run(self, debug=True, **kwargs):
         self.app.run(debug=debug, **kwargs)
