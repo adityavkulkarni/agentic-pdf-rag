@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class RetrievalEngine:
-    def __init__(self, db_handler: DBHandler = None, llm_client=None):
+    def __init__(self, db_handler: DBHandler = None, llm_client=None, use_qwen3=False):
         self.page_sources = None
         self.pages = None
         self.custom_fields = None
@@ -22,6 +22,7 @@ class RetrievalEngine:
             password=config.db_password,
             host=config.db_host,
             port=config.db_port,
+            use_qwen3=use_qwen3
         )
         self.llm_client = llm_client if llm_client else AzureOpenAIChatClient(
             model=config.agentic_pdf_parser_model,
@@ -122,19 +123,27 @@ class RetrievalEngine:
                 ]
             )
 
-    def get_document_content(self, files=None):
-        return {doc[0]: "\\n".join(doc[1]["parsed_pdf"]["pages_llm"])
-                for file in files
+    def get_document_content(self, files=None, use_docling=True):
+        content_key = "docling_content" if use_docling else "pages_llm"
+        logger.info(f"Getting {content_key}")
+        def get_content(d):
+            if use_docling:
+                return d[1]["parsed_pdf"]["docling_content"]
+            else:
+                return "\\n".join(d[1]["parsed_pdf"]["pages_llm"])
+        return {doc[0]: get_content(doc)
+                for file in set(files)
                 for doc in self.db_handler.get_documents(filename=file)
                 }
 
-    def analyze_query(self, query):
+    def analyze_query(self, query, attachment=None):
         outlines = self.get_document_outlines()
         if len(outlines) == 0:
             return {"type": "no_context"}
+        attachment_string = f"Attachment:\n{attachment}" if attachment else ""
         prompt = (
             "**Role**: Retrieval Strategy Analyst  \n"
-            "**Task**: \n1.Determine the most efficient retrieval type for the user query:  \n"
+            "**Task**: \n1.Determine the most efficient retrieval type for the user query and attachment(if any):  \n"
             "- `summary`: Retrieve document summaries only (for analysis tasks)  \n"
             "- `chunks`: Retrieve specific text chunks (for detail extraction)  \n"
             "2. Based on document outlines, determine all the relevant filenames "
@@ -159,15 +168,15 @@ class RetrievalEngine:
             "   | Exact value of...       | `chunks`       |  \n"
             "   | In [file] on page...    | `chunks`       |  \n\n"
             f"Document Outlines: {outlines}\n\n"
-            f"User Query: {query}"
-        )
+            f"User Query: {query}\n"
+        ) + attachment_string
         llm_response = json.loads(
             self.llm_client.chat_completion(
                 text=prompt, feature_model=QueryType
             ).choices[0].message.content
         )
         if llm_response["type"] == "summary":
-            llm_response["files"] = [file.strip() for file in llm_response["files"].split("|")]
+            llm_response["files"] = list(set([file.strip() for file in llm_response["files"].split("|")]))
         else:
             prompt = (
                 "You are a query optimization agent for a RAG system.\n"
@@ -185,7 +194,7 @@ class RetrievalEngine:
                     text=prompt, feature_model=SummaryResponse
                 ).choices[0].message.content
             )
-            llm_response["files"] = [file.strip() for file in llm_response["files"].split("|")]
+            llm_response["files"] = list(set([file.strip() for file in llm_response["files"].split("|")]))
             llm_response["type"] = "chunks"
         return llm_response
 
@@ -203,12 +212,13 @@ class RetrievalEngine:
             reverse=True
         )[:top_k]
 
-    def get_page_level_context(self, query):
+    def get_page_level_context(self, query, attachment=None):
         self.get_pages()
         outlines = [
             f"Filename: {page["filename"]}_page{page["page_no"]} | Summary: {page["summary"]}"
             for page in self.pages
         ]
+        attachment_string = f"**Attachment**:\n{attachment}" if attachment else ""
         prompt = (
             "You are a query optimization agent for a RAG system.\n"
             "Your task is to transform the user's analysis query into a detailed, "
@@ -219,13 +229,13 @@ class RetrievalEngine:
             f"{query}\n\n"
             "**Page Outline**:\n"
             f"{"\n".join(outlines)}\n\n"
-        )
+        ) + attachment_string
         llm_response = json.loads(
             self.llm_client.chat_completion(
                 text=prompt, feature_model=SummaryResponse
             ).choices[0].message.content
         )
-        llm_response["files"] = [file.strip() for file in llm_response["files"].split("|")]
+        llm_response["files"] = list(set([file.strip() for file in llm_response["files"].split("|")]))
         logging.info(f"Relevant pages: {llm_response['files']}")
         llm_response["type"] = "pages"
         self.page_sources = {file.split("_page")[0]: [] for file in llm_response["files"]}
@@ -275,7 +285,12 @@ class RetrievalEngine:
             self.sources[key] = list(set(self.sources[key]))
         if llm_response["context_type"] == "pages":
             context = page_response
-            self.sources = self.page_sources
+            self.sources["documents"] = []
+            for page in self.page_sources:
+                if len(self.page_sources[page]) == 0:
+                    self.sources["documents"].append(page)
+                    self.page_sources.remove(page)
+            self.sources = {** self.page_sources | {** self.sources }}
         elif llm_response["context_type"] == "document":
             context = llm_response
         else:
@@ -286,9 +301,9 @@ class RetrievalEngine:
         logging.info(f"Sources: {self.sources}")
         return context
 
-    def get_context(self, query, top_k=5, metadata_filter={}, detailed=False):
+    def get_context(self, query, top_k=5, attachment=None, metadata_filter={}, detailed=False):
         self.metadata_filter = metadata_filter
-        additional_details = self.analyze_query(query)
+        additional_details = self.analyze_query(query, attachment)
         logger.info(f"Query type: {additional_details.get('type')}")
         logger.info(f"Relevant files: {additional_details.get('files')}")
         self.custom_fields = [

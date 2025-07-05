@@ -7,8 +7,9 @@ from .config_manager import config
 from .models import PDFChunkerResults
 from .agentic_pdf_parser import AgenticPDFParser
 from .agentic_chunker import AgenticChunker
-from .embeddings import OpenAIEmbeddings
+from .embeddings import OpenAIEmbeddings, Qwen3Embeddings
 from .openai_client import AzureOpenAIChatClient
+from .qwen_embedding import Qwen3RetrievalSystem
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 class PDFChunker:
     def __init__(self,
                  agentic_pdf_parser: AgenticPDFParser=None,
-                 custom_embedding_model=None,
+                 use_qwen3=False,
                  openai_embedding_model="text-embedding-3-large",
                  openai_embeddings_endpoint = None,
                  openai_embeddings_api_key = None,
@@ -26,7 +27,7 @@ class PDFChunker:
                  semantic_chunker_sentence_split_regex=r"(?<=[.?!])\s+",
                  semantic_chunker_min_chunk_size=128,
                  semantic_chunker_number_of_chunks=10,
-                 agentic_chunker_context = ""
+                 agentic_chunker_context = "",
                  ):
         openai_embeddings_api_version = openai_embeddings_api_version or config.openai_embedding_api_version
         openai_embeddings_endpoint = openai_embeddings_endpoint or config.openai_embedding_endpoint
@@ -39,16 +40,18 @@ class PDFChunker:
         self.agentic_chunker = None
         self.sentences = []
         self.sentences_docling = []
-        self.embedding_client = AzureOpenAIChatClient(
-            api_endpoint=openai_embeddings_endpoint,
-            api_key=openai_embeddings_api_key,
-            api_version=openai_embeddings_api_version,
-            model=openai_embedding_model
-        )
-        if custom_embedding_model is None:
-            self.embeddings = OpenAIEmbeddings(self.embedding_client)
+
+        if use_qwen3:
+            self.embedding_client = Qwen3RetrievalSystem()
+            self.embeddings = Qwen3Embeddings(retrieval_system=self.embedding_client)
         else:
-            self.embeddings = custom_embedding_model
+            self.embedding_client = AzureOpenAIChatClient(
+                api_endpoint=openai_embeddings_endpoint,
+                api_key=openai_embeddings_api_key,
+                api_version=openai_embeddings_api_version,
+                model=openai_embedding_model
+            )
+            self.embeddings = OpenAIEmbeddings(self.embedding_client)
 
         if agentic_pdf_parser:
             self.add_parsed_pdf(agentic_pdf_parser, agentic_chunker_context)

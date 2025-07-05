@@ -48,7 +48,7 @@ class AgenticChunker:
             self._create_new_chunk(proposition)
             return
         chunk_id = self._find_relevant_chunk(proposition)
-        if chunk_id:
+        if chunk_id and chunk_id in self.chunks:
             if self.print_logging:
                 logger.info(f"Chunk Found ({self.chunks[chunk_id]['chunk_id']}), adding to: {self.chunks[chunk_id]['title']}")
             self.add_proposition_to_chunk(chunk_id, proposition)

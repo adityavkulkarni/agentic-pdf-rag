@@ -27,6 +27,7 @@ class Config:
             self.agentic_pdf_parser_model = models.get('agentic_pdf_parser_model')
             self.agentic_chunker_model = models.get('agentic_chunker_model')
             self.openai_embedding_model = models.get('openai_embedding_model')
+            self.use_qwen3 = True if models.get('use_qwen3') == "true" else False
         except KeyError as e:
             logger.error(f"Missing 'models' section or key: {e}")
             raise
@@ -86,6 +87,7 @@ class Config:
             "agentic_pdf_parser_model": self.agentic_pdf_parser_model,
             "agentic_chunker_model": self.agentic_chunker_model,
             "openai_embedding_model": self.openai_embedding_model,
+            "use_qwen3": self.use_qwen3,
             "openai_api_key": "<REDACTED>",
             "openai_embeddings_api_key": "<REDACTED>",
             "openai_endpoint": self.openai_endpoint,
@@ -110,6 +112,8 @@ class Config:
             self.agentic_chunker_model = config["agentic_chunker_model"]
         if "openai_embedding_model" in config:
             self.openai_embedding_model = config["openai_embedding_model"]
+        if "use_qwen3" in config:
+            self.use_qwen3 = config["use_qwen3"]
         if "openai_api_key" in config:
             self.openai_api_key = config["openai_api_key"]
         if "openai_embeddings_api_key" in config:
