@@ -42,6 +42,8 @@ class AgenticPDFParser:
         self.agentic_chunks_embeddings = None
         self.llm_response = None
         self.custom_extraction_llm_response = None
+        self.docling_sentences = dict()
+        self.sentences = dict()
 
         self.output_directory = output_directory
         self.docling_url = docling_url
@@ -90,9 +92,13 @@ class AgenticPDFParser:
         self.image_data.pages = [page for page in os.listdir(self.pages_dir)]
         self.image_data.pages.sort()
         self.results.parsed_pdf.processed_images = {
-            os.path.basename(path): self._image_to_base64(path)
+            f"page_{int(os.path.basename(path).split(".")[0].split("_")[-1])}": self._image_to_base64(path)
             for path in sorted(self.image_data.processed)
         }
+        """for path in sorted(os.listdir(self.groups_dir)):
+            self.results.parsed_pdf.processed_images[
+                f"group_{int(os.path.basename(path).split(".")[0].split("_")[-1])}"
+            ] = self._image_to_base64(os.path.join(self.groups_dir, path))"""
         logger.debug(f"Page to group map: {self.results.parsed_pdf.page_to_group_map}")
         logger.info(f'Stored {len(self.image_data.pages)} page images')
         return self.image_data
@@ -160,7 +166,7 @@ class AgenticPDFParser:
             logger.info(f"HTTP error: {e}")
             print(f"Response: {response.text}")
             return ""
-        return response.json()
+        return {int(page["page"]): page["markdown"] for page in response.json()["pages"]}
 
     def process_text(self, ocr=False, use_docling=True):
         if ocr:
@@ -171,17 +177,36 @@ class AgenticPDFParser:
                     filename, _ = os.path.splitext(filename_with_extension)
                     self.results.parsed_pdf.groups[filename] = self._get_ocr_text(os.path.join(self.groups_dir, file))
             self.results.parsed_pdf.groups = dict(sorted(self.results.parsed_pdf.groups.items()))
-            self.results.parsed_pdf.pages_ocr = [self._get_ocr_text(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
+            # self.results.parsed_pdf.pages_ocr = [self._get_ocr_text(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
         if use_docling:
-            self.results.parsed_pdf.docling_content = self.process_pdf_docling()["content"]["markdown"]
-        self.results.parsed_pdf.pages_descriptions = [self._get_page_content(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
-        self.results.parsed_pdf.pages_llm = [
-            f"{page['text_content']} \n\n Visual information: {page['visual_elements']}"
-            for page in self.results.parsed_pdf.pages_descriptions
-        ]
+            self.results.parsed_pdf.docling_content = self.process_pdf_docling()
+        self.results.parsed_pdf.pages_descriptions = {
+            int(image_path.split(".")[0].split("_")[1]): self._get_page_content(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages
+        }
+        self.results.parsed_pdf.pages_llm = {
+            no: f"{page['text_content']} \n\n Visual information: {page['visual_elements']}"
+            for no, page in self.results.parsed_pdf.pages_descriptions.items()
+        }
+        self.get_sentences()
         self.results.processed = True
         logger.info(f'Extracted text from {len(self.results.parsed_pdf.pages_llm)} pages')
         return self.results.parsed_pdf
+
+    def get_sentences(self):
+        for no, page in self.results.parsed_pdf.pages_llm.items():
+            for sent in page.split("\n\n"):
+                self.sentences[sent] = {
+                    "page": no, "group": 1,
+                    # "page_img": self.results.parsed_pdf.processed_images[f"page_{no}"],
+                    # "group_img": self.results.parsed_pdf.processed_images[f"group_{1}"],
+                }
+        for no, page in self.results.parsed_pdf.docling_content.items():
+            for sent in page.split("\n\n"):
+                self.docling_sentences[sent] = {
+                    "page": no, "group": 1,
+                    # "page_img": self.results.parsed_pdf.processed_images[f"page_{no}"],
+                    # "group_img": self.results.parsed_pdf.processed_images[f"group_{1}"],
+                }
 
     def get_summary_and_ner(self):
         try:
@@ -197,7 +222,7 @@ class AgenticPDFParser:
                 "- Extract an ID or document number or any such identifier.\n"
                 "- Return the results in the provided format.\n\n"
                 "document: \n"
-                f"{'\n'.join(self.results.parsed_pdf.pages_llm)}"
+                f"{'\n'.join(self.results.parsed_pdf.pages_llm.values())}"
             )
             self.llm_response = json.loads(
                 self.llm_client.chat_completion(prompt, feature_model=SummaryAndNER).choices[0].message.content)
@@ -216,7 +241,7 @@ class AgenticPDFParser:
         try:
             logger.info(f'LLM for custom fields extraction')
             self.custom_extraction_llm_response = json.loads(self.llm_client.chat_completion(
-                custom_extraction_prompt.replace("<<document>>", '\n'.join(self.results.parsed_pdf.pages_llm)),
+                custom_extraction_prompt.replace("<<document>>", '\n'.join(self.results.parsed_pdf.pages_llm.values())),
                 feature_model=custom_feature_model
                 ).choices[0].message.content
             )

@@ -73,6 +73,15 @@ class Config:
             raise
 
         try:
+            neo4j = config['neo4j']
+            self.neo4j_uri = neo4j.get('uri')
+            self.neo4j_user = neo4j.get('user')
+            self.neo4j_password = neo4j.get('password')
+        except KeyError as e:
+            logger.warning(f"Missing 'neo4j' section or key: {e}")
+            logger.info(f"Not using Knowledg graphs")
+            raise
+        try:
             docling = config['docling']
             self.docling_url = docling.get('docling_url')
         except KeyError as e:
@@ -100,6 +109,9 @@ class Config:
             "db_password": "<REDACTED>",
             "db_host": self.db_host,
             "db_port": self.db_port,
+            "neo4j_uri": self.neo4j_uri,
+            "neo4j_user": self.neo4j_user,
+            "neo4j_password": self.neo4j_password,
             "docling_url": self.docling_url,
         }
 
@@ -138,6 +150,12 @@ class Config:
             self.db_host = config["host"]
         if "port" in config:
             self.db_port = config["port"]
+        if "neo4j_uri" in config:
+            self.neo4j_uri = config["neo4j_uri"]
+        if "neo4j_user" in config:
+            self.neo4j_user = config["neo4j_user"]
+        if "neo4j_password" in config:
+            self.neo4j_password = config["neo4j_password"]
         if "docling_url" in config:
             self.docling_url = config["docling_url"]
 

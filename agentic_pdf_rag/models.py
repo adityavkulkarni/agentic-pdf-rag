@@ -15,16 +15,18 @@ class ChunkID(BaseModel):
 # PDF Parser
 class ParsedPDF(BaseModel):
     pages_ocr: List[Any] = Field(default_factory=list)
-    pages_llm: List[Any] = Field(default_factory=list)
-    pages_descriptions: List = Field(default_factory=list)
+    pages_llm: Dict[Any, Any] = Field(default_factory=list)
+    pages_descriptions: Dict[Any, Any] = Field(default_factory=list)
     groups: Dict[Any, Any] = Field(default_factory=dict)
     summary: str = ""
     processed_images: Dict[Any, Any] = Field(default_factory=dict)
     ner: List[Any] = Field(default_factory=list)
     title: str = ""
     identifier: str = ""
-    docling_content: str = ""
+    docling_content: Dict[Any, Any] = Field(default_factory=dict)
     page_to_group_map: Dict[Any, Any] = Field(default_factory=dict)
+    # sentences: Dict[Any, Any] = Field(default_factory=dict)
+    # docling_sentences: Dict[Any, Any] = Field(default_factory=dict)
 
 class ImageData(BaseModel):
     pages: List[Any] = Field(default_factory=list)
@@ -39,6 +41,7 @@ class PDFParserResults(BaseModel):
     parsed_pdf: ParsedPDF = Field(default_factory=ParsedPDF)
     custom_metadata: Dict[Any, Any] = Field(default_factory=dict)
     custom_extraction_llm_response: Dict[Any, Any] = Field(default_factory=dict)
+    locators: Dict[Any, Any] = Field(default_factory=dict)
 
     def to_dict(self):
         result = self.model_dump()

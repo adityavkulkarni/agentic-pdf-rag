@@ -1,4 +1,3 @@
-import os
 import psycopg2
 import logging
 
@@ -165,13 +164,12 @@ class PostgreSQLVectorClient:
     def _delete_document(self, table_name, file_name):
         """Find similar vectors using cosine similarity"""
         query = f"""
-            DELETE FROM {table_name}
-            WHERE filename LIKE '%{file_name}%'
+            DELETE FROM {table_name} WHERE filename LIKE '%{file_name}%'
         """
         self.cur.execute(query)
         logger.info(f"Deleted {file_name} from {table_name}")
 
-    def _close(self):
+    def close(self):
         self.cur.close()
         self.conn.close()
 
@@ -245,10 +243,10 @@ class DBHandler(PostgreSQLVectorClient):
             summary_embedding=self.embedding_client.create_embedding_dict([document["parsed_pdf"]["summary"]])[
                 document["parsed_pdf"]["summary"]],
         )
-        for i, page in enumerate(document["parsed_pdf"]["pages_descriptions"]):
+        for i, page in document["parsed_pdf"]["pages_descriptions"].items():
             self._insert_document(
                 table_name=self.page_table,
-                filename=f"{document["file_name"].split(".")[0]}_page{i+1}",
+                filename=f"{document["file_name"].split(".")[0]}_page{i}",
                 data=page,
                 summary_embedding=self.embedding_client.create_embedding_dict([page["summary"]])[page["summary"]]
             )
@@ -265,7 +263,7 @@ class DBHandler(PostgreSQLVectorClient):
         for chunk in agentic_chunks:
             for embedding in chunk["embedding"].values():
                 records.append({
-                "content": chunk["content"],
+                "content": chunk["metadata"]["agentic_chunk"],
                 "embedding": embedding,
                 "filename": chunk["filename"],
                 "summary_embedding": chunk["summary_embedding"],

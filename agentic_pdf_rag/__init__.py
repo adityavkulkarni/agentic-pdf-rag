@@ -72,6 +72,7 @@ class RAGPipeline:
     def get_pdf_chunker(self,
                         agentic_pdf_parser=None,
                         agentic_chunker_context="",
+                        docling=False,
                         buffer_size=1,
                         breakpoint_threshold_type="percentile",
                         number_of_chunks=None,
@@ -79,7 +80,7 @@ class RAGPipeline:
                         min_chunk_size=None,
                         ):
         if self.pdf_chunker:
-            self.pdf_chunker.add_parsed_pdf(agentic_pdf_parser=agentic_pdf_parser, agentic_chunker_context=agentic_chunker_context,)
+            self.pdf_chunker.add_parsed_pdf(agentic_pdf_parser=agentic_pdf_parser, agentic_chunker_context=agentic_chunker_context, docling=docling)
         return self.pdf_chunker if self.pdf_chunker else PDFChunker(agentic_pdf_parser=agentic_pdf_parser,
                           openai_embedding_model=self.config.openai_embedding_model,
                           use_qwen3=self.use_qwen3,
@@ -91,7 +92,8 @@ class RAGPipeline:
                           semantic_chunker_sentence_split_regex=sentence_split_regex,
                           semantic_chunker_min_chunk_size=min_chunk_size,
                           semantic_chunker_number_of_chunks=number_of_chunks,
-                          agentic_chunker_context=agentic_chunker_context
+                          agentic_chunker_context=agentic_chunker_context,
+                          docling=docling,
                           )
 
     def get_db_handler(self, create_tables=False):

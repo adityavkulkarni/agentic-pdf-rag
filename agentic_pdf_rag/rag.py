@@ -128,9 +128,9 @@ class RetrievalEngine:
         logger.info(f"Getting {content_key}")
         def get_content(d):
             if use_docling:
-                return d[1]["parsed_pdf"]["docling_content"]
+                return "\\n".join(d[1]["parsed_pdf"]["docling_content"].values())
             else:
-                return "\\n".join(d[1]["parsed_pdf"]["pages_llm"])
+                return "\\n".join(d[1]["parsed_pdf"]["pages_llm"].values())
         return {doc[0]: get_content(doc)
                 for file in set(files)
                 for doc in self.db_handler.get_documents(filename=file)
@@ -264,7 +264,7 @@ class RetrievalEngine:
         prompt = (
             "You are a context analyzer agent for a RAG system.\n"
             "Your task is to identify the best context for the user query.\n, "
-            "Compare Document Context and Page Context to identify which is more suitable to answer the query.\n"
+            "Compare Document Context, Page Context and Chunk Context to identify which is more suitable to answer the query.\n"
             "If extremely unsure then reply with hybrid(as a last option)."
             "Do not use outside knowledge.\n"
             "Return only: document or page or hybrid depending on which is better."
@@ -292,7 +292,7 @@ class RetrievalEngine:
                     self.page_sources.remove(page)
             self.sources = {** self.page_sources | {** self.sources }}
         elif llm_response["context_type"] == "document":
-            context = llm_response
+            context = context
         else:
             context = f"Page level context: {page_response}\n\n Document: {llm_response}"
             self.page_sources["documents"] = [doc for doc in self.sources["documents"] if
@@ -301,7 +301,7 @@ class RetrievalEngine:
         logging.info(f"Sources: {self.sources}")
         return context
 
-    def get_context(self, query, top_k=5, attachment=None, metadata_filter={}, detailed=False):
+    def get_context(self, query, top_k=5, attachment=None, metadata_filter={}):
         self.metadata_filter = metadata_filter
         additional_details = self.analyze_query(query, attachment)
         logger.info(f"Query type: {additional_details.get('type')}")
@@ -326,18 +326,16 @@ class RetrievalEngine:
             results = []
             for key, value in context_dict.items():
                 results += value
-            if detailed:
-                doc_context = results
-            else:
-                doc_context = '\n\n'.join([r['metadata']['content'] for r in results])
+            doc_context = '\n\n'.join([r['metadata']['agentic_chunk'] for r in results])
         elif additional_details.get("type") == "summary":
             doc_context = (
                 "Document Outlines: \n"
                 f"{"\n".join(self.get_document_outlines(files=additional_details["files"]))}\n\n"
-                "Document Content: \n"
-                f"{json.dumps(self.get_document_content(files=additional_details["files"]))}"
+                # "Document Content: \n"
+                # f"{json.dumps(self.get_document_content(files=additional_details["files"]))}"
             )
             # return context
+        # self.db_handler.close()
         return self.evaluate_context(query, doc_context, page_context)
 
 
@@ -347,25 +345,15 @@ class GenerationEngine:
 
     def generate_response(self, query, context, role=None, additional_instructions=None, attachment=None,
                           structured=True):
-        additional_instructions = f"Additional Instructions: {additional_instructions}" if not additional_instructions else ""
+        additional_instructions = f"Additional Instructions: {additional_instructions}" if additional_instructions else ""
         structure_instructions = ("- Summarize the response and output it in summary field\n"
                                   "- Response should be in the response field"
                                   "- If there is any content that can be use markdown, output it in the markdown field\n"
                                   if structured else "")
-        prompt = (
-                     f"You are an intelligent assistant. {role if role else ""}\n"
-                     f"{additional_instructions}\n\n"
-                     "Context:\n"
-                     f"{context}\n\n"
-                     "User Query:\n"
-                     f"{query}\n\n"
-                     "Instructions:\n"
-                     "- Use the provided context to answer the user query as accurately and concisely as possible.\n"
-                     "- Try to provide maximum information as possible.\n"
-                     "- Always follow any additional instructions specified above.\n"
-                     "- Format the response clearly. Use bullet points, tables, etc wherever necessary. Use markdown formatting.\n"
-                 ) + structure_instructions
-
+        if len(additional_instructions) > 0:
+            logger.info(f"Additional Instructions: {additional_instructions.replace('\n', ' ')}")
+        if len(structure_instructions) > 0:
+            logger.info(f"Structure Instructions: {structure_instructions.replace('\n', ' ')}")
         messages = [
             {
                 "role": "system",
@@ -386,12 +374,13 @@ class GenerationEngine:
                 "role": "system",
                 "content": (
                         "Instructions:\n"
-                        "- Use the provided context to answer the user query as accurately and concisely as possible.\n"
+                        "- Use the provided context to answer the user query as accurately and elaborately as possible.\n"
+                        "- Expand the context if possible. Provide detailed answers.\n"
                         "- Use the attachment if necessary and clearly mention if the attachment is used.\n"
                         "- Clearly mention which part of response is according to the context and which is according to attachment.\n"
-                        "- Try to provide maximum information as possible.\n"
+                        "- Try to be detailed and provide maximum information as possible.\n"
                         "- Always follow any additional instructions specified above.\n"
-                        "- Format the response clearly. Use bullet points, tables, etc wherever necessary. Use markdown formatting.\n"
+                        "- Format the response clearly. Use paragraphs, bullet points, tables, etc wherever necessary. Use markdown formatting.\n"
                         + structure_instructions
                 )
             }

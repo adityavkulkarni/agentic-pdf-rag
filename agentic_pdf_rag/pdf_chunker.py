@@ -28,6 +28,7 @@ class PDFChunker:
                  semantic_chunker_min_chunk_size=128,
                  semantic_chunker_number_of_chunks=10,
                  agentic_chunker_context = "",
+                 docling=False,
                  ):
         openai_embeddings_api_version = openai_embeddings_api_version or config.openai_embedding_api_version
         openai_embeddings_endpoint = openai_embeddings_endpoint or config.openai_embedding_endpoint
@@ -38,6 +39,7 @@ class PDFChunker:
         self.agentic_pdf_parser = None
         self.llm_client = None
         self.agentic_chunker = None
+        self.metadata = None
         self.sentences = []
         self.sentences_docling = []
 
@@ -54,7 +56,7 @@ class PDFChunker:
             self.embeddings = OpenAIEmbeddings(self.embedding_client)
 
         if agentic_pdf_parser:
-            self.add_parsed_pdf(agentic_pdf_parser, agentic_chunker_context)
+            self.add_parsed_pdf(agentic_pdf_parser, agentic_chunker_context, docling=docling)
         else:
             logger.info("No agentic_pdf_parser defined. Add parsed PDF object with: run_pipeline(agentic_pdf_parser)")
         self.semantic_chunker = SemanticChunker(
@@ -71,20 +73,25 @@ class PDFChunker:
             length_function=len
         )
 
-    def add_parsed_pdf(self, agentic_pdf_parser: AgenticPDFParser, agentic_chunker_context=""):
+    def add_parsed_pdf(self, agentic_pdf_parser: AgenticPDFParser, agentic_chunker_context="", docling=False):
         self.agentic_pdf_parser = agentic_pdf_parser
         self.llm_client = self.agentic_pdf_parser.llm_client
+        if docling:
+            self.sentences = [
+                x for x in self.agentic_pdf_parser.docling_sentences.keys() if len(x)
+            ]
+            self.metadata = self.agentic_pdf_parser.docling_sentences
+        else:
+            self.sentences = [
+                x for x in self.agentic_pdf_parser.sentences.keys() if len(x)
+            ]
+            self.metadata = self.agentic_pdf_parser.sentences
+
         self.agentic_chunker = AgenticChunker(
             llm_client=self.llm_client,
-            context=agentic_chunker_context
+            context=agentic_chunker_context,
+            metadata=self.metadata,
         )
-        self.sentences = [x for x in "\n\n".join(self.agentic_pdf_parser.results.parsed_pdf.pages_llm).split("\n\n") if
-                          len(x)]
-        if len(self.agentic_pdf_parser.results.parsed_pdf.docling_content):
-            self.sentences_docling = [
-                x for x in self.agentic_pdf_parser.results.parsed_pdf.docling_content.split("\n\n")
-                if len(x)
-            ]
         logger.info(f"Got {len(self.sentences)} sentences for chunking")
         if len(self.sentences_docling):
             logger.info(f"Got {len(self.sentences_docling)} sentences from docling for chunking")
@@ -96,30 +103,28 @@ class PDFChunker:
             for i, c in enumerate(chunks_of_chunk)
         }
 
-    def get_semantic_chunks(self, sentences=None, embeddings=True, metadata={}):
+    def get_semantic_chunks(self, sentences=None, embeddings=True, metadata=[]):
         if sentences is None:
-            sentences = self.sentences
-        chunks = self.semantic_chunker.create_documents(sentences)
-        chunks = [chunk.page_content for chunk in chunks]
+            metadata = []
+            sentences = []
+            for i, chunk in enumerate(self.results.agentic_chunks):
+                sentences.append(chunk["metadata"]["agentic_chunk"])
+                metadata.append(chunk["metadata"] | {"sentence_id": i})
+        chunks = self.semantic_chunker.create_documents(sentences, metadata)
+        print(f"sentences: {len(sentences)}\nmetadata: {len(metadata)}")
         if embeddings:
             # embedding_dict = self.embedding_client.create_embedding_dict(input_phrases=chunks)
             for chunk  in chunks:
-                key = "None"
-                for key in metadata:
-                    if chunk in key:
-                        break
-                    else:
-                        key = "None"
-                document_summary = self.agentic_pdf_parser.results.parsed_pdf.summary
-                md = metadata.get(key, {"content": chunk})
                 self.results.semantic_chunks.append({
-                    "embedding": self._get_embeddings(chunk),
-                    "metadata": md,
-                    "content": chunk,
+                    "embedding": self._get_embeddings(chunk.page_content),
+                    "metadata": chunk.metadata,
+                    "content": chunk.page_content,
                     "document_summary": self.agentic_pdf_parser.results.parsed_pdf.summary,
                     "filename": self.agentic_pdf_parser.results.file_name,
-                    "summary_embedding": self.embedding_client.create_embedding_dict(
-                        input_phrases=[document_summary])[document_summary]
+                    "summary_embedding": (
+                        self.embedding_client.create_embedding_dict(
+                            input_phrases=[self.agentic_pdf_parser.results.parsed_pdf.summary]
+                        )[self.agentic_pdf_parser.results.parsed_pdf.summary])
                 })
         else:
             self.results.semantic_chunks = chunks
@@ -134,8 +139,8 @@ class PDFChunker:
         for chunk in chunks:
             if embeddings:
                 # embedding_dict = self.embedding_client.create_embedding_dict(input_phrases=[chunk["metadata"]["content"]])
-                chunk["embedding"] = self._get_embeddings(chunk["metadata"]["content"])
-            chunk["content"] = chunk["metadata"]["content"]
+                chunk["embedding"] = self._get_embeddings(chunk["metadata"]["agentic_chunk"])
+            # chunk["content"] = chunk["metadata"]["agentic_chunk"]
             chunk["filename"] = self.agentic_pdf_parser.results.file_name
             chunk["document_summary"] = self.agentic_pdf_parser.results.parsed_pdf.summary
             chunk["summary_embedding"] = self.embedding_client.create_embedding_dict(

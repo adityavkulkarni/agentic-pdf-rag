@@ -19,12 +19,14 @@ class AgenticChunker:
                  openai_endpoint=None,
                  openai_api_key=None,
                  openai_api_version=None,
+                 metadata={}
                  ):
         self.chunks = dict()
         self.id_truncate_limit = 5
         self.generate_new_metadata_ind = generate_new_metadata_ind
         self.print_logging = True
         self.context = context
+        self.metadata = metadata
         self.llm_client = llm_client  if llm_client else AzureOpenAIChatClient(
             model=model or config.agentic_chunker_model,
             api_key=openai_api_key or config.openai_api_key,
@@ -63,6 +65,8 @@ class AgenticChunker:
         if self.generate_new_metadata_ind:
             self.chunks[chunk_id]['summary'] = self._update_chunk_summary(self.chunks[chunk_id])
             self.chunks[chunk_id]['title'] = self._update_chunk_title(self.chunks[chunk_id])
+            if self.metadata.get(proposition) not in self.chunks[chunk_id]['locators']:
+                self.chunks[chunk_id]['locators'].append(self.metadata.get(proposition))
 
     def _update_chunk_summary(self, chunk):
         prompt = [
@@ -262,7 +266,8 @@ class AgenticChunker:
             'propositions': [proposition],
             'title': new_chunk_title,
             'summary': new_chunk_summary,
-            'chunk_index': len(self.chunks)
+            'chunk_index': len(self.chunks),
+            'locators': [self.metadata.get(proposition, {})],
         }
         if self.print_logging:
             logger.info(f"Created new chunk ({new_chunk_id}): {new_chunk_title}")
@@ -352,7 +357,8 @@ class AgenticChunker:
                     "chunk_id": chunk_id,
                     "title": chunk['title'],
                     "summary": chunk['summary'],
-                    "content": "\n".join([x for x in chunk['propositions']])
+                    "agentic_chunk": "\n\n".join([x for x in chunk['propositions']]),
+                    "locators": chunk["locators"],
                 }
             })
         return chunks
