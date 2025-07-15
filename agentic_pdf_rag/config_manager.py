@@ -87,6 +87,12 @@ class Config:
         except KeyError as e:
             logger.error(f"Missing 'docling' section or key: {e}")
 
+        try:
+            document_manager = config['document_manager']
+            self.document_manager_url = document_manager.get('document_manager_url', None)
+        except KeyError as e:
+            logger.error(f"Missing 'docling' section or key: {e}")
+
         logger.info(f"Loaded config file:")
         for key, value in self.to_dict().items():
             logger.info(f"{key}: {value}")
@@ -113,6 +119,7 @@ class Config:
             "neo4j_user": self.neo4j_user,
             "neo4j_password": self.neo4j_password,
             "docling_url": self.docling_url,
+            "document_manager_url": self.document_manager_url,
         }
 
     def set_config(self, config):
@@ -158,5 +165,7 @@ class Config:
             self.neo4j_password = config["neo4j_password"]
         if "docling_url" in config:
             self.docling_url = config["docling_url"]
+        if "document_manager_url" in config:
+            self.document_manager_url = config["document_manager_url"]
 
 config = Config()

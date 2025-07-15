@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import tempfile
 
 from .config_manager import config
 from .models import QueryType, SummaryResponse, ContextType, MultiModalResponse
@@ -10,12 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class RetrievalEngine:
-    def __init__(self, db_handler: DBHandler = None, llm_client=None, use_qwen3=False):
+    def __init__(self, db_handler: DBHandler = None, llm_client=None, use_qwen3=False, store_src=True, document_manager=None):
         self.page_sources = None
         self.pages = None
         self.custom_fields = None
         self.sources = None
         self.metadata_filter = {}
+        self.files_src_chunk = {}
+        self.files_src = {}
+        self.pdf_src = {}
         self.db_handler = db_handler if db_handler else DBHandler(
             dbname=config.db_name,
             user=config.db_user,
@@ -30,6 +35,8 @@ class RetrievalEngine:
             api_endpoint=config.openai_endpoint,
             api_version=config.openai_api_version,
         )
+        self.store_src = store_src
+        self.document_manager = document_manager
 
     def get_similar_chunks(self, query_embeddings, docling=False, files=None):
         if docling:
@@ -198,8 +205,27 @@ class RetrievalEngine:
             llm_response["type"] = "chunks"
         return llm_response
 
+    @staticmethod
+    def unique_dicts(dicts):
+        seen = set()
+        unique = []
+
+        def freeze(obj):
+            if isinstance(obj, dict):
+                return tuple(sorted((k, freeze(v)) for k, v in obj.items()))
+            if isinstance(obj, list):
+                return tuple(freeze(i) for i in obj)
+            return obj
+
+        for d in dicts:
+            frozen = freeze(d)
+            if frozen not in seen:
+                seen.add(frozen)
+                unique.append(d)
+        return unique
+
     def _query_context(self, query_embeddings, a_query_embeddings, top_k=5, files=None):
-        return sorted(
+        """return sorted(
             self.get_similar_chunks(query_embeddings, files=files) +
             self.get_similar_chunk_by_summary(query_embeddings, files=files) +
             self.get_similar_chunks(a_query_embeddings, files=files) +
@@ -210,7 +236,31 @@ class RetrievalEngine:
             self.get_similar_chunk_by_summary(a_query_embeddings, files=files, docling=True),
             key=lambda x: x["similarity"],
             reverse=True
+        )[:top_k]"""
+        return sorted(
+            self.unique_dicts(
+                self.get_similar_chunks(query_embeddings, files=files) +
+                self.get_similar_chunk_by_summary(query_embeddings, files=files) +
+                self.get_similar_chunks(a_query_embeddings, files=files) +
+                self.get_similar_chunk_by_summary(a_query_embeddings, files=files) +
+                self.get_similar_chunks(query_embeddings, files=files, docling=True) +
+                self.get_similar_chunk_by_summary(query_embeddings, files=files, docling=True) +
+                self.get_similar_chunks(a_query_embeddings, files=files, docling=True) +
+                self.get_similar_chunk_by_summary(a_query_embeddings, files=files, docling=True)
+            ),
+            key=lambda x: x["similarity"],
+            reverse=True
         )[:top_k]
+
+    def _download_src(self, files):
+        if self.document_manager:
+            temp_dir = tempfile.TemporaryDirectory(prefix=f"pdf_src", dir=os.path.join(os.getcwd(), "tmp"),
+                                                   delete=False)
+            for file in files:
+                pdf = self.document_manager.list_pdfs(name=file)
+                if len(pdf):
+                    self.document_manager.download_pdf(pdf[0]["id"], os.path.join(temp_dir.name, file))
+                    self.pdf_src[file] = os.path.join(temp_dir.name, file)
 
     def get_page_level_context(self, query, attachment=None):
         self.get_pages()
@@ -293,6 +343,7 @@ class RetrievalEngine:
             self.sources = {** self.page_sources | {** self.sources }}
         elif llm_response["context_type"] == "document":
             context = context
+            self.files_src = self.files_src_chunk
         else:
             context = f"Page level context: {page_response}\n\n Document: {llm_response}"
             self.page_sources["documents"] = [doc for doc in self.sources["documents"] if
@@ -313,6 +364,7 @@ class RetrievalEngine:
         self.sources = {"documents": additional_details["files"]}
         page_context = self.get_page_level_context(query)
         doc_context = None
+        self._download_src(additional_details["files"])
         if additional_details.get("type") == "chunks":
             query_embeddings = self.db_handler.embedding_client.create_embedding_dict([query])[query]
             a_query_embeddings = self.db_handler.embedding_client.create_embedding_dict(
@@ -321,21 +373,44 @@ class RetrievalEngine:
             logger.info(f"Augmented query: {additional_details.get('augmented_query')}")
             context_dict = {}
             for file in additional_details["files"]:
-                context_dict[file] = self._query_context(query_embeddings, a_query_embeddings, top_k=top_k,
-                                                         files=[file])
+                context_dict[file] = self._query_context(
+                    query_embeddings,
+                    a_query_embeddings,
+                    top_k=top_k,
+                    files=[file]
+                )
+                if self.document_manager:
+                    temp_dir = tempfile.TemporaryDirectory(prefix=f"{file}_src", dir=os.path.join(os.getcwd(), "tmp"), delete=False)
+                    self.files_src_chunk[file] = [
+                        n['group']
+                        for src in context_dict[file]
+                        for n in src["metadata"]["locators"]
+                    ][:3]
+                    if len(self.files_src_chunk[file]):
+                        self.files_src_chunk[file] = set([x["index"] for x in self.files_src_chunk[file] if x["index"] != -1])
+                    pdf = self.document_manager.list_pdfs(name=file)
+                    if len(pdf):
+                        attachments = self.document_manager.list_attachments(pdf_id=pdf[0]["id"],)
+                        attachments = [attachment for attachment in attachments if int(attachment["sys_metadata"].get("group_no", -1) ) in self.files_src_chunk[file]]
+                        self.files_src_chunk[file] = [
+                            self.document_manager.download_attachment(
+                                attachment_id=attachment["id"],
+                                save_path=os.path.join(temp_dir.name, attachment["original_filename"])
+                            )
+                            for attachment in attachments
+                        ]
             results = []
             for key, value in context_dict.items():
                 results += value
             doc_context = '\n\n'.join([r['metadata']['agentic_chunk'] for r in results])
         elif additional_details.get("type") == "summary":
+            self.files_src_chunk = {}
             doc_context = (
                 "Document Outlines: \n"
                 f"{"\n".join(self.get_document_outlines(files=additional_details["files"]))}\n\n"
                 # "Document Content: \n"
                 # f"{json.dumps(self.get_document_content(files=additional_details["files"]))}"
             )
-            # return context
-        # self.db_handler.close()
         return self.evaluate_context(query, doc_context, page_context)
 
 

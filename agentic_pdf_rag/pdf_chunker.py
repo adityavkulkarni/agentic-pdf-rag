@@ -111,9 +111,7 @@ class PDFChunker:
                 sentences.append(chunk["metadata"]["agentic_chunk"])
                 metadata.append(chunk["metadata"] | {"sentence_id": i})
         chunks = self.semantic_chunker.create_documents(sentences, metadata)
-        print(f"sentences: {len(sentences)}\nmetadata: {len(metadata)}")
         if embeddings:
-            # embedding_dict = self.embedding_client.create_embedding_dict(input_phrases=chunks)
             for chunk  in chunks:
                 self.results.semantic_chunks.append({
                     "embedding": self._get_embeddings(chunk.page_content),

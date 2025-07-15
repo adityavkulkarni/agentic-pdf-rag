@@ -11,9 +11,12 @@ import requests
 
 from PIL import Image
 from dotenv import load_dotenv
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 from . import image_parser
 from .config_manager import config
+from .document_manager_client import DocumentManagerClient
 from .models import PDFParserResults, ImageData, SummaryAndNER, PageDescription
 from .openai_client import AzureOpenAIChatClient
 
@@ -28,7 +31,8 @@ class AgenticPDFParser:
                  openai_api_key=None,
                  openai_api_version=None,
                  output_directory="pdf_images",
-                 docling_url=None
+                 docling_url=None,
+                 document_manager_url=None,
                  ):
         self.results = PDFParserResults()
         self.image_data= ImageData()
@@ -41,6 +45,7 @@ class AgenticPDFParser:
         self.semantic_chunks_embeddings = None
         self.agentic_chunks_embeddings = None
         self.llm_response = None
+        self.pdf_info = None
         self.custom_extraction_llm_response = None
         self.docling_sentences = dict()
         self.sentences = dict()
@@ -53,8 +58,11 @@ class AgenticPDFParser:
             api_endpoint=openai_endpoint or config.openai_endpoint,
             api_version=openai_api_version or config.openai_api_version
         )
+        if document_manager_url:
+            self.document_manager = DocumentManagerClient(base_url=document_manager_url)
+        else:
+            self.document_manager = None
         os.makedirs(self.output_directory, exist_ok=True)
-        image_parser.group_index = 1
 
     def parse_file(self, pdf_file, file_name=None, custom_metadata=None):
         logger.info(f'Initializing AgenticPDFParser with file: {pdf_file}')
@@ -79,9 +87,12 @@ class AgenticPDFParser:
         os.makedirs(self.groups_dir, exist_ok=True)
         if custom_metadata:
             self.results.custom_metadata = custom_metadata
+        if self.document_manager:
+            self.pdf_info = self.document_manager.upload_pdf(file_path=pdf_file, filename=file_name, metadata=custom_metadata)
 
     def get_image_data(self):
         logger.info('Extracting image data')
+        image_parser.group_index = 1
         for i, image in enumerate(self.images):
             image_path = os.path.join(self.pages_dir, f'page_{i + 1}.jpg')
             image.save(image_path, 'JPEG')
@@ -95,6 +106,32 @@ class AgenticPDFParser:
             f"page_{int(os.path.basename(path).split(".")[0].split("_")[-1])}": self._image_to_base64(path)
             for path in sorted(self.image_data.processed)
         }
+        if self.document_manager:
+            self.attachments = []
+            for file_path in self.image_data.processed:
+                self.attachments.append(
+                    self.document_manager.upload_attachment(
+                        pdf_id=self.pdf_info["id"],
+                        file_path=file_path,
+                        metadata={"type": "processed_page", "page_no": int(os.path.basename(file_path).split(".")[0].split("_")[-1])}
+                    )
+                )
+            for file_path in os.listdir(self.groups_dir):
+                try:
+                    self.attachments.append(
+                        self.document_manager.upload_attachment(
+                            pdf_id=self.pdf_info["id"],
+                            file_path=os.path.join(self.groups_dir, file_path),
+                            metadata={
+                                "type": "group",
+                                "group_no": os.path.basename(file_path).split(".")[0].split("_")[-1]
+                            }
+                        )
+                    )
+                except Exception as e:
+                    print(e)
+                    print(file_path)
+                    raise e
         """for path in sorted(os.listdir(self.groups_dir)):
             self.results.parsed_pdf.processed_images[
                 f"group_{int(os.path.basename(path).split(".")[0].split("_")[-1])}"
@@ -169,15 +206,15 @@ class AgenticPDFParser:
         return {int(page["page"]): page["markdown"] for page in response.json()["pages"]}
 
     def process_text(self, ocr=False, use_docling=True):
-        if ocr:
-            if self.groups_dir:
-                for file in [f for f in sorted(os.listdir(self.groups_dir)) if
-                             os.path.isfile(os.path.join(self.groups_dir, f))]:
-                    filename_with_extension = os.path.basename(os.path.join(self.groups_dir, file))
-                    filename, _ = os.path.splitext(filename_with_extension)
-                    self.results.parsed_pdf.groups[filename] = self._get_ocr_text(os.path.join(self.groups_dir, file))
-            self.results.parsed_pdf.groups = dict(sorted(self.results.parsed_pdf.groups.items()))
-            # self.results.parsed_pdf.pages_ocr = [self._get_ocr_text(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
+        # if ocr:
+        if self.groups_dir:
+            for file in [f for f in sorted(os.listdir(self.groups_dir)) if
+                         os.path.isfile(os.path.join(self.groups_dir, f))]:
+                filename_with_extension = os.path.basename(os.path.join(self.groups_dir, file))
+                filename, _ = os.path.splitext(filename_with_extension)
+                self.results.parsed_pdf.groups[int(file.split(".")[0].split("_")[-1])] = self._get_ocr_text(os.path.join(self.groups_dir, file))
+        self.results.parsed_pdf.groups = dict(sorted(self.results.parsed_pdf.groups.items()))
+        # self.results.parsed_pdf.pages_ocr = [self._get_ocr_text(os.path.join(self.pages_dir, image_path)) for image_path in self.image_data.pages]
         if use_docling:
             self.results.parsed_pdf.docling_content = self.process_pdf_docling()
         self.results.parsed_pdf.pages_descriptions = {
@@ -187,26 +224,43 @@ class AgenticPDFParser:
             no: f"{page['text_content']} \n\n Visual information: {page['visual_elements']}"
             for no, page in self.results.parsed_pdf.pages_descriptions.items()
         }
-        self.get_sentences()
+        self.get_sentences(ocr)
         self.results.processed = True
         logger.info(f'Extracted text from {len(self.results.parsed_pdf.pages_llm)} pages')
         return self.results.parsed_pdf
 
-    def get_sentences(self):
+    def get_pred_group(self, sentence):
+        all_texts = [sentence] + list(self.results.parsed_pdf.groups.values())
+        # Initialize TF-IDF vectorizer and transform texts
+        vectorizer = TfidfVectorizer().fit(all_texts)
+        tfidf_matrix = vectorizer.transform(all_texts)
+
+        similarity_scores = cosine_similarity(tfidf_matrix[0], tfidf_matrix[1:]).flatten()
+
+        idx = int(similarity_scores.argmax())
+        if similarity_scores[idx] > 0.8:
+            return {"index": idx + 1, "confidence": similarity_scores[idx]}
+        return {"index": -1, "confidence": 0}
+        """ print(f"Groups: {self.results.parsed_pdf.groups}")
+        print(f"Best matching group index: {idx}")
+        print(f"Similarity score: {similarity_scores[idx]:.4f}")
+        print(f"Sentence: {sentence}")
+        print(f"Best matching group: {self.results.parsed_pdf.groups[idx + 1]}")
+        return idx + 1"""
+
+    def get_sentences(self, ocr=False):
         for no, page in self.results.parsed_pdf.pages_llm.items():
             for sent in page.split("\n\n"):
                 self.sentences[sent] = {
-                    "page": no, "group": 1,
-                    # "page_img": self.results.parsed_pdf.processed_images[f"page_{no}"],
-                    # "group_img": self.results.parsed_pdf.processed_images[f"group_{1}"],
+                    "page": no, "group": self.get_pred_group(sent)
                 }
         for no, page in self.results.parsed_pdf.docling_content.items():
             for sent in page.split("\n\n"):
                 self.docling_sentences[sent] = {
-                    "page": no, "group": 1,
-                    # "page_img": self.results.parsed_pdf.processed_images[f"page_{no}"],
-                    # "group_img": self.results.parsed_pdf.processed_images[f"group_{1}"],
+                    "page": no, "group": self.get_pred_group(sent),
                 }
+        if not ocr:
+            self.results.parsed_pdf.groups = {}
 
     def get_summary_and_ner(self):
         try:

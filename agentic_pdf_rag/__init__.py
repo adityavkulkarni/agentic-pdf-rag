@@ -6,6 +6,7 @@ from .db_handler import DBHandler
 from .openai_client import AzureOpenAIChatClient
 from .pdf_chunker import PDFChunker
 from .rag import RetrievalEngine, GenerationEngine
+from .document_manager_client import DocumentManagerClient
 
 __all__ = [
     "AgenticPDFParser",
@@ -46,6 +47,7 @@ class RAGPipeline:
 
         if init:
             self.pdf_parser = self.get_agentic_pdf_parser()
+            self.document_manager = self.pdf_parser.document_manager
             self.pdf_chunker = self.get_pdf_chunker(agentic_pdf_parser=None,
                                      agentic_chunker_context=agentic_chunker_context,
                                      buffer_size=buffer_size,
@@ -67,6 +69,12 @@ class RAGPipeline:
             openai_api_version=self.config.openai_api_version,
             output_directory=self.config.output_directory,
             docling_url=self.config.docling_url,
+            document_manager_url=self.config.document_manager_url,
+        )
+
+    def get_document_manager(self):
+        return self.document_manager if self.document_manager is not None else DocumentManagerClient(
+            base_url=self.config.document_manager_url
         )
 
     def get_pdf_chunker(self,
@@ -107,10 +115,15 @@ class RAGPipeline:
             use_qwen3=self.use_qwen3,
         )
 
-    def get_retrieval_engine(self, db_handler=None):
+    def get_retrieval_engine(self, db_handler=None, store_src=True):
         if db_handler is None:
             db_handler = self.get_db_handler()
-        return self.retrieval_engine if self.retrieval_engine else RetrievalEngine(db_handler=db_handler,   use_qwen3=self.use_qwen3)
+        return self.retrieval_engine if self.retrieval_engine else RetrievalEngine(
+            db_handler=db_handler,
+            use_qwen3=self.use_qwen3,
+            store_src=store_src,
+            document_manager=self.document_manager,
+        )
 
     def get_generation_engine(self, llm_client=None):
         if llm_client is None:
