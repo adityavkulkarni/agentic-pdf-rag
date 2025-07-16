@@ -1,11 +1,11 @@
-from .neo4j_client import Neo4jClient
+from ..database import Neo4jClient
 
 
 class KnowledgeGraph(Neo4jClient):
     def __init__(self, **kwargs):
         Neo4jClient.__init__(self, **kwargs)
 
-    def add_cda(self, filename, summary=""):
+    def add_cda(self, filename, summary="", date=""):
         pass
 
     def add_amendment(self, filename, cda_name, summary=""):

@@ -14,11 +14,11 @@ from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from . import image_parser
-from .config_manager import config
-from .document_manager_client import DocumentManagerClient
-from .models import PDFParserResults, ImageData, SummaryAndNER, PageDescription
-from .openai_client import AzureOpenAIChatClient
+from ..parsers import image_parser
+from ..config_manager import config
+from ..clients import DocumentManagerClient
+from ..models import PDFParserResults, ImageData, SummaryAndNER, PageDescription
+from ..clients import AzureOpenAIChatClient
 
 load_dotenv()
 logger = logging.getLogger(__name__)

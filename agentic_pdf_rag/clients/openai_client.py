@@ -1,4 +1,4 @@
-import os
+import unicodedata
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 
@@ -82,6 +82,16 @@ class AzureOpenAIChatClient:
                 model=self.model
             )
         except Exception as e:
+            def make_safe_for_openai_embedding(text):
+                # Ensure string type and remove None values
+                if text is None:
+                    return ""
+                if not isinstance(text, str):
+                    text = str(text)
+                # Remove control characters (except for common whitespace)
+                text = ''.join(c for c in text if unicodedata.category(c)[0] != "C" or c in '\n\r\t')
+                return text
+            input_phrases = [make_safe_for_openai_embedding(input) for input in input_phrases]
             response = self.client.embeddings.create(
                 input=input_phrases,
                 model=self.model

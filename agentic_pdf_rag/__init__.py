@@ -1,13 +1,13 @@
 import os
 
 from . import config_manager
-from .agentic_pdf_parser import AgenticPDFParser
-from .db_handler import DBHandler
-from .openai_client import AzureOpenAIChatClient
-from .pdf_chunker import PDFChunker
+from .parsers import AgenticPDFParser
+from .memory import DBHandler
+from .clients import AzureOpenAIChatClient
+from .chunkers import PDFChunker
 from .rag import RetrievalEngine, GenerationEngine
-from .document_manager_client import DocumentManagerClient
-from .neo4j_client import Neo4jClient
+from .clients import DocumentManagerClient
+from .database import Neo4jClient
 __all__ = [
     "AgenticPDFParser",
     "PDFChunker",

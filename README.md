@@ -378,30 +378,30 @@ print(response)
 Maximum flexibility for custom implementations.
 
 ```python
-from agentic_pdf_rag.agentic_pdf_parser import AgenticPDFParser
-from agentic_pdf_rag.agentic_chunker import AgenticChunker
-from agentic_pdf_rag.db_handler import DBHandler
+from agentic_pdf_rag.parsers.agentic_pdf_parser import AgenticPDFParser
+from agentic_pdf_rag.chunkers.agentic_chunker import AgenticChunker
+from agentic_pdf_rag.memory.db_handler import DBHandler
 
 # Custom PDF parser
 parser = AgenticPDFParser(
-    model="gpt-4o-2024-08-06",
-    openai_endpoint="your-endpoint",
-    openai_api_key="your-key"
+   model="gpt-4o-2024-08-06",
+   openai_endpoint="your-endpoint",
+   openai_api_key="your-key"
 )
 
 # Custom chunker with specific context
 chunker = AgenticChunker(
-    context="Scientific research papers",
-    generate_new_metadata_ind=True
+   context="Scientific research papers",
+   generate_new_metadata_ind=True
 )
 
 # Custom database handler
 db = DBHandler(
-    dbname="custom_db",
-    user="user",
-    password="pass",
-    host="localhost",
-    port=5432
+   dbname="custom_db",
+   user="user",
+   password="pass",
+   host="localhost",
+   port=5432
 )
 ```
 

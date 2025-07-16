@@ -2,9 +2,9 @@ import json
 import uuid
 import logging
 
-from .config_manager import config
-from .models import ChunkID
-from .openai_client import AzureOpenAIChatClient
+from ..config_manager import config
+from ..models import ChunkID
+from ..clients import AzureOpenAIChatClient
 
 
 logger = logging.getLogger(__name__)

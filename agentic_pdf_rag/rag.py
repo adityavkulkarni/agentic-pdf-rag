@@ -5,8 +5,8 @@ import tempfile
 
 from .config_manager import config
 from .models import QueryType, SummaryResponse, ContextType, MultiModalResponse
-from .db_handler import DBHandler
-from .openai_client import AzureOpenAIChatClient
+from .memory import DBHandler
+from .clients import AzureOpenAIChatClient
 
 logger = logging.getLogger(__name__)
 

@@ -3,13 +3,13 @@ import logging
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-from .config_manager import config
-from .models import PDFChunkerResults
-from .agentic_pdf_parser import AgenticPDFParser
+from ..config_manager import config
+from ..models import PDFChunkerResults
+from ..parsers import AgenticPDFParser
 from .agentic_chunker import AgenticChunker
-from .embeddings import OpenAIEmbeddings, Qwen3Embeddings
-from .openai_client import AzureOpenAIChatClient
-from .qwen_embedding import Qwen3RetrievalSystem
+from ..embedding_models import OpenAIEmbeddings, Qwen3Embeddings
+from ..clients import AzureOpenAIChatClient
+from ..embedding_models import Qwen3RetrievalSystem
 
 logger = logging.getLogger(__name__)
 

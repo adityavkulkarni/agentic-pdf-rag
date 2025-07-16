@@ -2,7 +2,8 @@ import logging
 
 from typing import List
 from langchain_core.embeddings import Embeddings
-from .openai_client import AzureOpenAIChatClient
+
+from ..clients import AzureOpenAIChatClient
 from .qwen_embedding import Qwen3RetrievalSystem
 
 logger = logging.getLogger(__name__)

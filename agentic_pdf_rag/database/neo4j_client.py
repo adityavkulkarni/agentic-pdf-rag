@@ -207,10 +207,10 @@ if __name__ == "__main__":
         amendment1 = client.create_node(
             label="Amendment",
             properties={
-                "id": 15,
-                "name": "CDA #EP Consolidated_1_0_1st Amendment.pdf",
+                "id": 19,
+                "name": "CDA #EP Consolidated_3_0_3rd Amendment_Recorded.pdf",
                 "summary": '''''',
-                "date": "February 1, 2013"
+                "date": "March 1, 2015"
             }
         )
         # client.delete_node(label="CDA", node_id="14")
