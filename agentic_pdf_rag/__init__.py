@@ -7,7 +7,7 @@ from .openai_client import AzureOpenAIChatClient
 from .pdf_chunker import PDFChunker
 from .rag import RetrievalEngine, GenerationEngine
 from .document_manager_client import DocumentManagerClient
-
+from .neo4j_client import Neo4jClient
 __all__ = [
     "AgenticPDFParser",
     "PDFChunker",
@@ -44,6 +44,7 @@ class RAGPipeline:
         self.openai_embeddings_client = None
         self.retrieval_engine = None
         self.generator = None
+        self.graph_handler = None
 
         if init:
             self.pdf_parser = self.get_agentic_pdf_parser()
@@ -60,6 +61,7 @@ class RAGPipeline:
             self.openai_embeddings_client = self.get_openai_embeddings_client()
             self.retrieval_engine = self.get_retrieval_engine(db_handler=self.db_handler)
             self.generator = self.get_generation_engine(llm_client=self.openai_client)
+            self.graph_handler = self.get_graph_db_handler()
 
     def get_agentic_pdf_parser(self):
         return self.pdf_parser if self.pdf_parser is not None else AgenticPDFParser(
@@ -193,3 +195,10 @@ class RAGPipeline:
         context = self.retrieve_context(query)
         response = self.generate_response(query, context, additional_instructions)
         return response
+
+    def get_graph_db_handler(self):
+        return self.graph_handler if self.graph_handler else Neo4jClient(
+            uri=self.config.neo4j_uri,
+            user=self.config.neo4j_user,
+            password=self.config.neo4j_password
+        )

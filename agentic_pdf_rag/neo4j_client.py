@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from neo4j import GraphDatabase
 
 class Neo4jClient:
@@ -38,8 +40,7 @@ class Neo4jClient:
 
     def fetch_nodes(self, label, filters=None):
         with self.driver.session() as session:
-            result = session.execute_read(self._fetch_nodes_tx, label, filters)
-            return [record[0] for record in result]
+            return session.execute_read(self._fetch_nodes_tx, label, filters)
 
     @staticmethod
     def _fetch_nodes_tx(tx, label, filters):
@@ -50,7 +51,7 @@ class Neo4jClient:
             query += f" WHERE {filter_str}"
         query += " RETURN n"
         result = tx.run(query, **filters)
-        return result
+        return [record[0] for record in result]
 
     def fetch_relationships(self, from_label=None, rel_type=None, to_label=None):
         with self.driver.session() as session:
@@ -70,6 +71,35 @@ class Neo4jClient:
         query += ") RETURN a, type(r), b"
         result = tx.run(query)
         return [(record["a"], record["type(r)"], record["b"]) for record in result]
+
+    def fetch_graph(self):
+        with self.driver.session() as session:
+            return session.execute_read(self._fetch_graph_tx)
+
+    def get_graph_dict(self):
+        with self.driver.session() as session:
+            nodes = []
+            edges = []
+            for record in session.execute_read(self._fetch_graph_tx):
+                n = record["n"]
+                m = record["m"]
+                r = record["r"]
+                if n.id not in [node["data"]["id"] for node in nodes]:
+                    # nodes.append(Node(id=str(n.element_id), label=f'{str(""list(n.labels))}: {n._properties["id"]}'))
+                    nodes.append({"data": {"label": str(list(n.labels)[0]), **n._properties}})
+                if m.id not in [node["data"]["id"] for node in nodes]:
+                    nodes.append({"data": {"label": str(list(m.labels)[0]), **m._properties}})
+                # edges.append(Edge(source=str(n.element_id), target=str(m.element_id)))
+                edges.append({"data": {"id": r.element_id, "label": r.type, "source": n._properties["id"],
+                                       "target": m._properties["id"]}})
+            return {
+                "nodes": nodes,
+                "edges": edges,
+            }
+
+    @staticmethod
+    def _fetch_graph_tx(tx):
+        return list(tx.run("MATCH (n)-[r]->(m) RETURN n, r, m"))
 
     def delete_node(self, label, node_id):
         with self.driver.session() as session:
@@ -100,7 +130,7 @@ if __name__ == "__main__":
     client = Neo4jClient(uri, user, password)
 
     try:
-        # Create CDA node
+        '''# Create CDA node
         cda_id = str(3107)
         cda_node = client.create_node("CDA", {"id": cda_id, "name": "Sample CDA"})
 
@@ -117,7 +147,7 @@ if __name__ == "__main__":
             to_label="Amendment",
             to_id=amendment1_id,
             rel_type="HAS_AMENDMENT"
-        )
+        )'''
         """client.create_relationship(
             from_label="CDA",
             from_id=cda_id,
@@ -138,7 +168,7 @@ if __name__ == "__main__":
         client.delete_node("Amendment", "3107.1")
         client.delete_node("Amendment", "3107.2")"""
 
-        with client.driver.session() as session:
+        '''with client.driver.session() as session:
             session.run(
                 """
                 MATCH (c:CDA {id: $cda_id})-[r:HAS_AMENDMENT]->(a:Amendment {id: $amendment1_id})
@@ -162,13 +192,39 @@ if __name__ == "__main__":
             to_label="Amendment",
             to_id=amendment1_id,
             rel_type="UPDATES"
+        )'''
+        """cda_node = client.create_node(
+            label="CDA",
+            properties={
+                "id": 14,
+                "name": "CDA #EP Consolidated_0_0_Original_Recorded.pdf",
+                "summary": '''The document titled "University EP Energy Consolidated Drilling and Development Unit Agreement" outlines a comprehensive agreement involving the State of Texas, the Board for Lease of University Lands, and EP Energy E&P Company, L.P. The agreement consolidates multiple oil and gas leases across Crockett, Reagan, Irion, and Upton Counties in Texas. It includes several Development Unit Agreements, specifically numbered 2589, 2615, 2618, 2623, and 2624, which were amended to optimize the use of state lands for oil and gas production. The document details the terms for drilling obligations, productive acreage, and the assignment of interests. It also specifies the conditions under which the agreement can be terminated or amended. The agreement is effective from February 1, 2013, and includes provisions for continuous drilling obligations and the assignment of interests, requiring state consent for any transfer. The document is signed by representatives from EP Energy and the State of Texas, including Richard H. Little and Jerry E. Patterson, with notarization by Lisa C. Belue. The agreement is recorded in various deed records across the involved counties, with specific book and page references provided for each lease.''',
+                "date": "February 1, 2013"
+            }
         )
-
-        relationships = client.fetch_relationships()
-        print("\nRelationships in the database:")
-        for a, rel_type, b in relationships:
-            print(f"({a['labels']} {{id: {a['id']}}}) -[:{rel_type}]-> ({b['labels']} {{id: {b['id']}}})")
-
+        print(cda_node)"""
+        # print(client.fetch_nodes(label="CDA"))
+        amendment1 = client.create_node(
+            label="Amendment",
+            properties={
+                "id": 15,
+                "name": "CDA #EP Consolidated_1_0_1st Amendment.pdf",
+                "summary": '''''',
+                "date": "February 1, 2013"
+            }
+        )
+        # client.delete_node(label="CDA", node_id="14")
+        relationships = client.fetch_graph()
+        print(f"\nRelationships in the database: {relationships}")
+        #for a, rel_type, b in relationships:
+        #    print(f"({a['labels']} {{id: {a['id']}}}) -[:{rel_type}]-> ({b['labels']} {{id: {b['id']}}})")
+        for record in relationships:
+            n = record["n"]
+            m = record["m"]
+            r = record["r"]
+            print(n.labels)
+            print(m.labels)
+            print(r.type)
     finally:
         client.close()
 

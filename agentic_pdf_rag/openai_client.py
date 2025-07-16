@@ -76,10 +76,16 @@ class AzureOpenAIChatClient:
 
     def create_embedding_dict(self, input_phrases: list[str]):
         # Get the embeddings response
-        response = self.client.embeddings.create(
-            input=input_phrases,
-            model=self.model
-        )
+        try:
+            response = self.client.embeddings.create(
+                input=input_phrases,
+                model=self.model
+            )
+        except Exception as e:
+            response = self.client.embeddings.create(
+                input=input_phrases,
+                model=self.model
+            )
         # Extract the embeddings from the response
         embeddings = [item.embedding for item in response.data]
         # Map each phrase to its embedding
